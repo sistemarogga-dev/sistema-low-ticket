@@ -307,6 +307,7 @@ td.num{font:500 13px var(--f-mono);font-variant-numeric:tabular-nums;white-space
     <button type="button" class="rail-btn ico" data-act="nav" data-view="painel" id="nav-painel" title="Painel" aria-label="Painel"></button>
     <button type="button" class="rail-btn ico" data-act="nav" data-view="modelos" id="nav-modelos" title="Modelos de tarefas" aria-label="Modelos de tarefas"></button>
     <button type="button" class="rail-btn ico" data-act="nav" data-view="backup" id="nav-backup" title="Backup e acesso" aria-label="Backup e acesso"></button>
+    <button type="button" class="rail-btn ico" data-act="nav" data-view="equipe" id="nav-equipe" title="Equipe" aria-label="Equipe" hidden></button>
     <button type="button" class="rail-btn add ico" data-act="nova" id="nav-nova" title="Nova oferta" aria-label="Nova oferta"></button>
     <span class="grow"></span>
     <button type="button" class="avatar" id="conta" data-act="sair" hidden></button>
@@ -356,6 +357,7 @@ const I = {
 document.getElementById('nav-painel').innerHTML = I.grid;
 document.getElementById('nav-modelos').innerHTML = I.list;
 document.getElementById('nav-backup').innerHTML = I.backup;
+document.getElementById('nav-equipe').innerHTML = '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0111 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2a4.5 4.5 0 015 4.8"/></svg>';
 document.getElementById('nav-nova').innerHTML = I.plus;
 
 /* ---------- Método: etapas e modelos (da planilha) ---------- */
@@ -456,6 +458,11 @@ let contaEmail = '';
 let loginEmail = '';
 let loginMsg = null;   // {t, erro}
 let senhaMsg = null;   // mensagem do cartão "Acesso com senha"
+let loginCriar = false; // tela de entrada mostrando "Criar conta"
+let verifMsg = null;
+let equipe = [];       // e-mails liberados (só o administrador lê)
+let equipeMsg = null;
+const ehAdmin = () => origem === 'firebase' && !!contaEmail && contaEmail.toLowerCase() === String(window.LT_ADMIN || '').toLowerCase();
 const abertas = {};
 const detalhes = new Set();
 const pend = {}, timers = {}, chains = {};
@@ -642,7 +649,8 @@ shell.addEventListener('focusout', () => { if (needRender) setTimeout(() => { if
 
 function render() {
   const f = captureFocus();
-  for (const v of ['painel', 'modelos', 'backup']) document.getElementById('nav-' + v).toggleAttribute('aria-current', false);
+  for (const v of ['painel', 'modelos', 'backup', 'equipe']) document.getElementById('nav-' + v).toggleAttribute('aria-current', false);
+  document.getElementById('nav-equipe').hidden = !(ehAdmin() && mode === 'remote');
   if (view !== 'oferta' && document.getElementById('nav-' + view)) document.getElementById('nav-' + view).setAttribute('aria-current', 'page');
   const conta = document.getElementById('conta');
   conta.hidden = !contaEmail; conta.textContent = (contaEmail || '?')[0].toUpperCase(); conta.title = contaEmail ? `${contaEmail} · Sair` : '';
@@ -658,7 +666,26 @@ function render() {
 function renderMain() {
   if (mode === 'loading') return `<div class="skel" style="height:80px"></div><div class="skel" style="height:240px"></div><p class="label" style="margin:0">Carregando suas ofertas…</p>`;
   if (mode === 'setup') return `<div class="center"><div class="login"><h1>Falta configurar o Firebase</h1><p>Abra o arquivo <b>firebase-config.js</b>, cole as chaves do seu projeto Firebase e publique de novo. O passo a passo está no arquivo LEIA-ME.</p></div></div>`;
-  if (mode === 'login') return `<div class="center"><div class="login"><div class="logo" style="color:var(--ink);background:var(--lime);border-radius:50%;width:64px;height:64px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" style="width:36px;height:36px;stroke-width:3"><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/></svg></div><h1>Sistema de Execução Low Ticket</h1><p>Entre para ver suas ofertas em qualquer dispositivo.</p>
+  const logoBig = `<div class="logo" style="color:var(--ink);background:var(--lime);border-radius:50%;width:64px;height:64px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" style="width:36px;height:36px;stroke-width:3"><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/></svg></div>`;
+  const aviso = m => m ? `<p style="margin:0;font-size:14px;color:${m.erro ? 'var(--danger)' : 'var(--muted)'}">${esc(m.t)}</p>` : '';
+  if (mode === 'verificar') return `<div class="center"><div class="login">${logoBig}<h1>Confirme seu e-mail</h1>
+    <p>Enviamos um link de confirmação para <b>${esc(contaEmail)}</b>. Abra seu e-mail (veja também o spam), clique no link e depois volte aqui.</p>${aviso(verifMsg)}
+    <button class="btn lime" data-act="ja-confirmei" style="width:100%;justify-content:center">Já confirmei</button>
+    <div class="gen-acts" style="justify-content:center"><button class="btn sm" data-act="reenviar">Reenviar e-mail</button><button class="btn sm" data-act="sair">Sair</button></div></div></div>`;
+  if (mode === 'semacesso') return `<div class="center"><div class="login">${logoBig}<h1>Acesso ainda não liberado</h1>
+    <p>O e-mail <b>${esc(contaEmail)}</b> ainda não está na lista de quem pode usar o sistema. Peça ao administrador para liberar e depois clique em "Tentar de novo".</p>
+    <button class="btn lime" data-act="tentar-de-novo" style="width:100%;justify-content:center">Tentar de novo</button>
+    <button class="btn sm" data-act="sair">Sair</button></div></div>`;
+  if (mode === 'login' && loginCriar) return `<div class="center"><div class="login">${logoBig}<h1>Criar conta</h1><p>Use o e-mail que foi liberado para você.</p>
+    <form id="form-criar" style="display:grid;gap:10px;width:100%;text-align:left">
+      <label class="field"><span class="label">E-mail</span><input id="cr-email" type="email" autocomplete="username" required value="${esc(loginEmail)}"></label>
+      <label class="field"><span class="label">Senha (mínimo 6 caracteres)</span><input id="cr-1" type="password" autocomplete="new-password" minlength="6" required></label>
+      <label class="field"><span class="label">Repita a senha</span><input id="cr-2" type="password" autocomplete="new-password" minlength="6" required></label>
+      ${aviso(loginMsg)}
+      <button type="submit" class="btn lime" style="justify-content:center">Criar conta</button>
+    </form>
+    <button type="button" class="mini" data-act="login-modo" data-criar="0">Já tenho conta · Entrar</button></div></div>`;
+  if (mode === 'login') return `<div class="center"><div class="login">${logoBig}<h1>Sistema de Execução Low Ticket</h1><p>Entre para ver suas ofertas em qualquer dispositivo.</p>
     <form id="form-login" style="display:grid;gap:10px;width:100%;text-align:left">
       <label class="field"><span class="label">E-mail</span><input id="lg-email" type="email" autocomplete="username" required value="${esc(loginEmail)}"></label>
       <label class="field"><span class="label">Senha</span><input id="lg-senha" type="password" autocomplete="current-password" required></label>
@@ -668,7 +695,7 @@ function renderMain() {
     </form>
     <div style="display:flex;align-items:center;gap:10px;width:100%;color:var(--muted);font-size:13px"><span style="flex:1;height:1px;background:var(--line)"></span>ou<span style="flex:1;height:1px;background:var(--line)"></span></div>
     <button class="btn" data-act="entrar" style="width:100%;justify-content:center">Entrar com Google</button>
-    <p style="font-size:13px">Primeiro acesso? Entre com o Google e crie sua senha na tela Backup &amp; acesso.</p></div></div>`;
+    <p style="font-size:14px">Primeiro acesso? <button type="button" class="mini" data-act="login-modo" data-criar="1" style="padding:0;color:var(--fg);text-decoration:underline">Criar conta</button></p></div></div>`;
   const banner = mode === 'local' ? `<div class="banner">Modo local: as ofertas ficam salvas só neste navegador.</div>` : '';
   if (view === 'oferta') {
     const o = ofertas.find(x => x.id === focoId);
@@ -676,6 +703,7 @@ function renderMain() {
   }
   if (view === 'modelos') return banner + renderModelos();
   if (view === 'backup') return banner + renderBackup();
+  if (view === 'equipe' && ehAdmin()) return renderEquipe();
   return banner + renderPainel();
 }
 
@@ -920,6 +948,25 @@ function renderModelos() {
             : `<div class="danger-zone"><button class="btn sm" data-act="m-padrao">Restaurar modelos originais da planilha</button></div>`}`;
 }
 
+const linkSistema = () => location.origin + location.pathname;
+const textoConvite = email => `Oi! Liberei seu acesso ao Sistema de Execução Low Ticket.\n\n1. Abra ${linkSistema()}\n2. Clique em "Criar conta" e use o e-mail ${email} (se for uma conta Google, pode clicar em "Entrar com Google").\n3. Confirme o e-mail pelo link que você vai receber.\n\nSuas ofertas ficam só na sua conta: ninguém mais vê.`;
+function renderEquipe() {
+  const lista = [...equipe].sort();
+  const rows = lista.map(e => `<div class="lrow" style="grid-template-columns:minmax(0,1fr) auto auto">
+      <span style="overflow-wrap:anywhere">${esc(e)}</span>
+      <button type="button" class="btn sm" data-act="copiar-convite" data-email="${esc(e)}"><span class="ico">${I.copy}</span>Copiar convite</button>
+      <button type="button" class="mini" data-act="rm-equipe" data-email="${esc(e)}">Remover</button></div>`).join('');
+  return `<div class="head"><div><h1>Equipe</h1><p>Libere o e-mail de quem pode usar o sistema. Cada pessoa tem as próprias ofertas, separadas das suas: você não vê as delas e elas não veem as suas.</p></div></div>
+    <div class="card" style="display:grid;gap:14px"><h3>Liberar um e-mail</h3>
+      <form id="form-equipe" class="add-row" style="padding:0"><input class="inp" id="eq-email" type="email" placeholder="email@exemplo.com" aria-label="E-mail para liberar" required><button type="submit" class="btn lime sm">Liberar acesso</button></form>
+      ${equipeMsg ? `<p style="margin:0;font-size:14px;color:${equipeMsg.erro ? 'var(--danger)' : 'var(--fg)'}">${esc(equipeMsg.t)}</p>` : ''}
+      <p class="hint" style="margin:0">Depois de liberar, use "Copiar convite" e mande a mensagem para a pessoa pelo WhatsApp ou e-mail.</p></div>
+    <div class="card" style="display:grid;gap:10px"><h3>E-mails liberados · ${lista.length}</h3>
+      <p class="hint" style="margin:0">Você (${esc(contaEmail)}) tem acesso sempre, como administrador.</p>
+      <div class="rows">${rows || '<span style="color:var(--muted);font-size:14px">Nenhum e-mail liberado ainda.</span>'}</div>
+      <p class="hint" style="margin:0">Remover um e-mail bloqueia a entrada da pessoa. As ofertas dela não são apagadas e voltam se você liberar de novo.</p></div>`;
+}
+
 function renderBackup() {
   const podeBaixar = origem !== 'claude';
   let acesso = '';
@@ -1052,6 +1099,28 @@ document.addEventListener('click', ev => {
       if (mode === 'local') saveLocal();
       toast(importPrev.ofertas.length + ' ofertas importadas.'); importPrev = null; render(); break; }
     case 'entrar': entrarGoogle(); break;
+    case 'login-modo': loginCriar = el.dataset.criar === '1'; loginMsg = null; render(); break;
+    case 'reenviar': {
+      const u = window.firebase.auth().currentUser; if (!u) return;
+      u.sendEmailVerification().then(() => { verifMsg = { t: 'Enviamos de novo. Confira a caixa de entrada e o spam.' }; render(); })
+        .catch(e => { verifMsg = { t: msgAuth(e), erro: true }; render(); });
+      break; }
+    case 'ja-confirmei': {
+      const auth = window.firebase.auth(); const u = auth.currentUser; if (!u) return;
+      u.reload().then(() => {
+        const u2 = auth.currentUser;
+        if (!u2.emailVerified) { verifMsg = { t: 'Ainda não aparece como confirmado. Clique no link do e-mail e tente de novo.', erro: true }; render(); return; }
+        return u2.getIdToken(true).then(() => entrarNoSistema(u2));
+      }).catch(e => { verifMsg = { t: msgAuth(e), erro: true }; render(); });
+      break; }
+    case 'tentar-de-novo': { const u = window.firebase.auth().currentUser; if (u) u.getIdToken(true).then(() => entrarNoSistema(u)); break; }
+    case 'copiar-convite': copiar(textoConvite(el.dataset.email), 'Convite copiado. Cole no WhatsApp ou no e-mail.'); break;
+    case 'rm-equipe': {
+      const e = el.dataset.email;
+      window.firebase.firestore().collection('acesso').doc('lista').set({ emails: window.firebase.firestore.FieldValue.arrayRemove(e) }, { merge: true })
+        .then(() => { equipeMsg = { t: e + ' removido. Essa pessoa não consegue mais entrar.' }; render(); })
+        .catch(() => { equipeMsg = { t: 'Não foi possível remover. Tente de novo.', erro: true }; render(); });
+      break; }
     case 'esqueci': {
       const em = (document.getElementById('lg-email') || {}).value || '';
       loginEmail = em.trim();
@@ -1125,6 +1194,23 @@ document.addEventListener('submit', ev => {
     window.firebase.auth().signInWithEmailAndPassword(loginEmail, senha)
       .then(() => { loginMsg = null; })
       .catch(e => { loginMsg = { t: msgAuth(e), erro: true }; render(); });
+  } else if (f.id === 'form-criar') {
+    loginEmail = document.getElementById('cr-email').value.trim();
+    const s1 = document.getElementById('cr-1').value, s2 = document.getElementById('cr-2').value;
+    if (s1.length < 6) { loginMsg = { t: 'A senha precisa ter pelo menos 6 caracteres.', erro: true }; render(); return; }
+    if (s1 !== s2) { loginMsg = { t: 'As duas senhas não são iguais.', erro: true }; render(); return; }
+    loginMsg = { t: 'Criando conta…' }; render();
+    window.firebase.auth().createUserWithEmailAndPassword(loginEmail, s1)
+      .then(r => r.user.sendEmailVerification())
+      .then(() => { loginCriar = false; loginMsg = null; verifMsg = null; })
+      .catch(e => { loginMsg = { t: e && e.code === 'auth/email-already-in-use' ? 'Esse e-mail já tem conta. Volte e use "Entrar" ou "Esqueci minha senha".' : msgAuth(e), erro: true }; render(); });
+  } else if (f.id === 'form-equipe') {
+    const e = document.getElementById('eq-email').value.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) { equipeMsg = { t: 'Digite um e-mail válido.', erro: true }; render(); return; }
+    if (e === contaEmail.toLowerCase()) { equipeMsg = { t: 'Esse é o seu e-mail: você já tem acesso como administrador.', erro: true }; render(); return; }
+    window.firebase.firestore().collection('acesso').doc('lista').set({ emails: window.firebase.firestore.FieldValue.arrayUnion(e) }, { merge: true })
+      .then(() => { equipeMsg = { t: e + ' liberado. Agora copie o convite e envie para a pessoa.' }; render(); })
+      .catch(() => { equipeMsg = { t: 'Não foi possível liberar. Tente de novo.', erro: true }; render(); });
   } else if (f.id === 'form-senha') {
     const s1 = document.getElementById('sn-1').value, s2 = document.getElementById('sn-2').value;
     if (s1.length < 6) { senhaMsg = { t: 'A senha precisa ter pelo menos 6 caracteres.', erro: true }; render(); return; }
@@ -1162,7 +1248,20 @@ function conectar() {
     ofertas = lista;
     for (const id in pend) { const o = ofertas.find(x => x.id === id); if (o) merge(o, pend[id]); }
     okOfertas = true; mode = 'remote'; aplicarHash(); scheduleRender();
-  }, () => toast('Não foi possível carregar as ofertas. Recarregue a página.')));
+  }, err => {
+    if (err && err.code === 'permission-denied') { mode = 'semacesso'; render(); }
+    else toast('Não foi possível carregar as ofertas. Recarregue a página.');
+  }));
+}
+function entrarNoSistema(u) {
+  contaEmail = u.email || '';
+  if (!u.emailVerified) { mode = 'verificar'; render(); return; }
+  mode = 'loading'; render();
+  const fs = window.firebase.firestore();
+  S = adapterFirebase(fs, u.uid); conectar();
+  if (ehAdmin()) unsubs.push(fs.collection('acesso').doc('lista').onSnapshot(s => {
+    equipe = (s.exists && s.data().emails) || []; if (view === 'equipe') scheduleRender();
+  }, () => {}));
 }
 function msgAuth(e) {
   const c = (e && e.code) || '';
@@ -1193,11 +1292,11 @@ async function iniciar() {
     if (!cfg.apiKey || /COLE/.test(cfg.apiKey)) { mode = 'setup'; render(); return; }
     window.firebase.initializeApp(cfg);
     const auth = window.firebase.auth();
+    auth.languageCode = 'pt-BR';
     auth.getRedirectResult().catch(() => {});
     auth.onAuthStateChanged(u => {
-      if (!u) { unsubs.forEach(x => { try { x(); } catch {} }); unsubs = []; ofertas = []; contaEmail = ''; mode = 'login'; render(); return; }
-      contaEmail = u.email || ''; mode = 'loading'; render();
-      S = adapterFirebase(window.firebase.firestore(), u.uid); conectar();
+      if (!u) { unsubs.forEach(x => { try { x(); } catch {} }); unsubs = []; ofertas = []; equipe = []; contaEmail = ''; view = 'painel'; mode = 'login'; render(); return; }
+      entrarNoSistema(u);
     });
     return;
   }
