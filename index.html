@@ -377,7 +377,7 @@ document.getElementById('nav-nova').innerHTML = I.plus;
 const ETAPAS = [
   { key: 'e2', num: '01', nome: 'Desenvolvimento', titulo: 'Desenvolvimento da oferta', cor: '--s2',
     desc: 'Modelagem para ideias mineradas; refinamento para concepções próprias.',
-    foco: 'Pesquisa de demanda + comentários reais + checklist da oferta.',
+    foco: 'Pesquisa de demanda + comentários reais + Ficha da oferta preenchida.',
     refs: 'YouTube, Google Trends, Reclame Aqui e marketplaces.' },
   { key: 'e3', num: '02', nome: 'Criação do Produto', titulo: 'Criação do Produto', cor: '--s3',
     desc: 'Produza o material principal, os bônus e os order bumps definidos na oferta.',
@@ -403,7 +403,7 @@ const DEV = [
   'Desenvolver uma ideia de produto mudando algum aspecto da oferta minerada (Nicho, público, dor, mecanismo e formato) ou refinar uma ideia pré-concebida.',
   'Pesquisar sobre a ideia do produto no youtube, google trends, reclame aqui, marketing places para ver se o produto soluciona uma dor latente.',
   'Registrar os melhores comentários para conhecermos a fundo o público. (Essa pesquisa de público será essencial para escrever a copy da página de vendas).',
-  'Preencher o checklist da oferta.'
+  'Preencher a Ficha da oferta.'
 ];
 // Passos que saíram do Desenvolvimento (removidos também das ofertas existentes pela migração 'sem-vantagens-doc').
 const DEV_REMOVIDOS = [
@@ -1380,18 +1380,19 @@ function aplicarHash() {
 // Mudanças pontuais no método: aplicadas uma única vez aos modelos e a cada oferta (marcadas em "migracoes").
 const T_REGISTRAR = DEV[2];
 const T_CHECKLIST = 'Preencher o checklist da oferta.';
+const T_FICHA = 'Preencher a Ficha da oferta.';
 const MIGRACOES = [
   { id: 'chk-oferta',
     modelos: m => {
       for (const k of ['e2_Modelagem', 'e2_Refinamento']) {
-        const l = m[k]; if (!l || l.some(x => x.t === T_CHECKLIST)) continue;
+        const l = m[k]; if (!l || l.some(x => x.t === T_CHECKLIST || x.t === T_FICHA)) continue;
         const i = l.findIndex(x => x.t === T_REGISTRAR);
         l.splice(i < 0 ? l.length : i + 1, 0, { t: T_CHECKLIST, ev: '', como: '' });
       }
     },
     oferta: o => {
       const ts = tarefasDe(o, 'e2');
-      if (!ts.length || ts.some(t => t.t === T_CHECKLIST)) return;
+      if (!ts.length || ts.some(t => t.t === T_CHECKLIST || t.t === T_FICHA)) return;
       const i = ts.findIndex(t => t.t === T_REGISTRAR);
       ts.splice(i < 0 ? ts.length : i + 1, 0, { id: 'chk', t: T_CHECKLIST, ev: '', como: '', feito: false, link: '', nota: '' });
       ts.forEach(({ id, ...v }, j) => { o.etapas.e2[id] = { ...v, ordem: j + 1 }; });
@@ -1404,6 +1405,14 @@ const MIGRACOES = [
       const e2 = (o.etapas || {}).e2; if (!e2) return;
       for (const id in e2) if (DEV_REMOVIDOS.includes(e2[id].t)) delete e2[id];
       tarefasDe(o, 'e2').forEach((t, j) => { e2[t.id].ordem = j + 1; });
+    } },
+  { id: 'ficha-oferta',
+    modelos: m => {
+      for (const k of ['e2_Modelagem', 'e2_Refinamento']) for (const x of m[k] || []) if (x.t === T_CHECKLIST) x.t = T_FICHA;
+    },
+    oferta: o => {
+      const e2 = (o.etapas || {}).e2; if (!e2) return;
+      for (const id in e2) if (e2[id].t === T_CHECKLIST) e2[id].t = T_FICHA;
     } }
 ];
 function migrarTudo() {
