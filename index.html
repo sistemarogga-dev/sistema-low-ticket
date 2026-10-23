@@ -122,7 +122,7 @@ a{color:inherit}
 .bar{height:6px;border-radius:99px;background:var(--surface-2);overflow:hidden}
 .bar i{display:block;height:100%;background:var(--c,var(--fg));border-radius:inherit}
 .inp,.field input,.field select,.field textarea{border:1px solid var(--line);background:var(--main);border-radius:12px;padding:9px 12px;width:100%;min-width:0;color:var(--fg)}
-.field{display:grid;gap:5px;min-width:0}
+.field{display:grid;gap:5px;min-width:0;align-content:start}
 .field textarea,textarea.inp{resize:vertical;min-height:70px;line-height:1.45}
 .money{position:relative;display:block}
 .money::before{content:"R$";position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;pointer-events:none}
@@ -495,11 +495,11 @@ const PLATAFORMAS = ['Cakto', 'Greenn', 'WiaPay', 'Kiwify', 'Hotmart', 'Outra'];
 const FICHA = [
   { k: 'headline', t: 'Headline', ph: 'A frase principal da oferta, a primeira coisa que a pessoa lê.', area: true },
   { k: 'subheadline', t: 'Subheadline', ph: 'Complementa a headline: para quem é, o que entrega e como.', area: true },
-  { k: 'publico', t: 'Público-alvo', ph: 'Quem compra? Profissão, momento de vida, nível de conhecimento.' },
+  { k: 'publico', t: 'Público-alvo', ph: 'Quem compra? Profissão, momento de vida, nível de conhecimento.', area: true },
   { k: 'dor', t: 'Dor principal', ph: 'O problema urgente que o produto resolve.', area: true },
   { k: 'promessa', t: 'Promessa / transformação', ph: 'O resultado que a pessoa quer alcançar.', area: true },
   { k: 'mecanismo', t: 'Mecanismo único', ph: 'O jeito diferente como o produto resolve.', area: true },
-  { k: 'formato', t: 'Formato do entregável', ph: 'E-book, mapa visual, planner, checklist, kit…' },
+  { k: 'formato', t: 'Formato do entregável', ph: 'E-book, mapa visual, planner, checklist, kit…', area: true },
   { k: 'vantagens', t: 'Vantagens da oferta', ph: 'Uma por linha (Mapa das Vantagens).', area: true },
   { k: 'comentarios', t: 'Comentários reais do público', ph: 'Cole os melhores comentários, um por linha.', area: true },
   { k: 'objecoes', t: 'Objeções', ph: 'O que impede a compra, uma por linha.', area: true }
