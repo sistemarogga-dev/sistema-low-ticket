@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#1C1D1B">
 <title>Sistema de Execução Low Ticket</title>
-<meta name="description" content="Organize suas ofertas low ticket nas 5 etapas: desenvolvimento, criação do produto, página de vendas e criativos.">
+<meta name="description" content="Organize suas ofertas low ticket nas 6 etapas: desenvolvimento, criação do produto, página de vendas, estrutura e criativos.">
 <meta name="application-name" content="Low Ticket">
 <meta name="apple-mobile-web-app-title" content="Low Ticket">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -30,7 +30,7 @@
   --main:#ECECE8; --surface:#FFFFFF; --surface-2:#E3E3DE; --line:#D8D8D2; --fg:#1C1D1B; --muted:#6A6B65;
   --lime:#DCF07A; --lime-2:#F0F8C8; --lav:#B9A9F2; --lav-2:#E6E0FB; --coral:#F27F86; --coral-2:#FCDDDF; --sky:#94D3EE; --sky-2:#DAF0F9;
   --ink:#1C1D1B; --danger:#C4373F;
-  --s1:#A9AAA3; --s2:var(--lav); --s3:var(--coral); --s4:var(--sky); --s5:var(--lime);
+  --s1:#A9AAA3; --s2:var(--lav); --s3:var(--coral); --s4:var(--sky); --s5:var(--lime); --s6:#F5B26B;
   --f-ui:"Urbanist","Segoe UI",system-ui,sans-serif;
   --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
   --r-xl:28px; --r-lg:20px; --r-md:14px;
@@ -136,7 +136,7 @@ a{color:inherit}
 
 /* painel */
 .board-scroll{overflow-x:auto;padding-bottom:6px}
-.board{display:grid;grid-template-columns:repeat(5,minmax(200px,1fr));gap:12px;min-width:min-content}
+.board{display:grid;grid-template-columns:repeat(6,minmax(190px,1fr));gap:12px;min-width:min-content}
 .col{background:var(--surface-2);border-radius:var(--r-lg);padding:10px;display:flex;flex-direction:column;gap:8px;min-height:130px}
 .col-head{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;padding:4px 6px}
 .col-head .n{margin-left:auto;font:500 12px var(--f-mono);color:var(--muted)}
@@ -381,13 +381,17 @@ const ETAPAS = [
     refs: 'YouTube, Google Trends, Reclame Aqui, marketplaces, Mapa das Vantagens e Obra de Arte 100k.' },
   { key: 'e3', num: '03', nome: 'Criação do Produto', titulo: 'Criação do Produto', cor: '--s3',
     desc: 'Produza o material principal, os bônus e os order bumps definidos na oferta.',
-    foco: 'Da redação à diagramação, teste dos arquivos e cadastro no checkout.',
-    refs: 'ChatGPT/Claude, Pinterest, Lovable e Cakto/Green/WiaPay.' },
+    foco: 'Da redação à diagramação e teste dos arquivos.',
+    refs: 'ChatGPT/Claude, Pinterest e Lovable.' },
   { key: 'e4', num: '04', nome: 'Página de Vendas', titulo: 'Página de Vendas', cor: '--s4',
-    desc: 'Escreva a copy, monte a página no Lovable e conecte checkout e rastreamento.',
-    foco: 'Promessas honestas; imagens fiéis ao produto; experiência mobile.',
-    refs: 'ChatGPT/Claude, Lovable, WebP, Pixel Meta e Testar Eventos.' },
-  { key: 'e5', num: '05', nome: 'Criativos', titulo: 'Criativos', cor: '--s5',
+    desc: 'Escreva a copy, monte a página no Lovable e coloque o link do checkout.',
+    foco: 'Promessas honestas; imagens fiéis ao produto; boa experiência no celular e no computador.',
+    refs: 'ChatGPT/Claude, Lovable e WebP.' },
+  { key: 'es', num: '05', nome: 'Estrutura', titulo: 'Estrutura', cor: '--s6',
+    desc: 'Cadastre a oferta no checkout e deixe o rastreamento pronto para medir cada venda.',
+    foco: 'Produto e order bumps cadastrados, UTMs configuradas e eventos da Meta disparando corretamente.',
+    refs: 'Cakto/Green/WiaPay, UTMFY, Pixel Meta e Testar Eventos.' },
+  { key: 'e5', num: '06', nome: 'Criativos', titulo: 'Criativos', cor: '--s5',
     desc: 'Produza anúncios estáticos e em vídeo com demonstrações reais do produto.',
     foco: 'Testar ganchos visuais e textuais, editar versões curtas e organizar a pasta final.',
     refs: 'Pinterest, Behance, Google Flow/Gemini, ElevenLabs, CapCut, Drive.' }
@@ -409,8 +413,7 @@ const MODELOS_PADRAO = {
     'Criar o texto do entregável principal, bônus e order bumps.',
     'Fazer o planejamento da estrutura (capa, contracapa, sumário, corpo…).',
     'Buscar uma referência visual de página no pinterest.',
-    'Criar no lovable ou no chat GPT (Skill do Lovable ou skill do Codex do Fernando Oliveira PRO).',
-    'Cadastrar o produto principal e os order bumps plataforma (Cakto, Green, Wiapay).'),
+    'Criar no lovable ou no chat GPT (Skill do Lovable ou skill do Codex do Fernando Oliveira PRO).'),
   e4: L(
     'Escrever a copy da página de vendas com o ChatGPT ou Claude e revisar tudo ajustando ao vocabulário e aos argumentos e dores da persona.',
     'Remixar o modelo de página de vendas no lovable.',
@@ -418,6 +421,10 @@ const MODELOS_PADRAO = {
     'Comprimir e converter todas as imagens para WEBP.',
     'Enviar copy finalizada e as imagens para o site remixado no Lovable.',
     'Colocar link do checkout nos CTA.',
+    'Conferir desempenho em vários dispositivos.'),
+  es: L(
+    'Cadastrar o produto principal e os order bumps plataforma (Cakto, Green, Wiapay).',
+    'Configurar UTMFY.',
     'Criar e instalar pixel na página de vendas.',
     'Verificar os disparos dos eventos da Meta. (Teste de eventos na Meta ou na pedindo ao Lovable).'),
   e5: L(
@@ -436,8 +443,44 @@ const LISTAS = [
   { k: 'e2_Refinamento', etapa: 'e2', rotulo: '02 · Desenvolvimento · rota Refinamento', ajuda: 'Gerada para ofertas de origem Concepção (ideia própria).' },
   { k: 'e3', etapa: 'e3', rotulo: '03 · Criação do Produto', ajuda: 'Igual para todas as ofertas.' },
   { k: 'e4', etapa: 'e4', rotulo: '04 · Página de Vendas', ajuda: 'Igual para todas as ofertas.' },
-  { k: 'e5', etapa: 'e5', rotulo: '05 · Criativos', ajuda: 'Igual para todas as ofertas.' }
+  { k: 'es', etapa: 'es', rotulo: '05 · Estrutura', ajuda: 'Igual para todas as ofertas.' },
+  { k: 'e5', etapa: 'e5', rotulo: '06 · Criativos', ajuda: 'Igual para todas as ofertas.' }
 ];
+// Migração para a etapa Estrutura: tarefas que saíram de Criação do Produto e Página de Vendas.
+const MOVIDAS = [
+  'Cadastrar o produto principal e os order bumps plataforma (Cakto, Green, Wiapay).',
+  'Criar e instalar pixel na página de vendas.',
+  'Verificar os disparos dos eventos da Meta. (Teste de eventos na Meta ou na pedindo ao Lovable).'
+];
+const T_UTMFY = 'Configurar UTMFY.';
+const T_DISPOSITIVOS = 'Conferir desempenho em vários dispositivos.';
+const ORDEM_ES = [MOVIDAS[0], T_UTMFY, MOVIDAS[1], MOVIDAS[2]];
+function migrarModelos(m) {
+  if (m.es) return false;
+  const achar = t => [...(m.e3 || []), ...(m.e4 || [])].find(x => x.t === t) || { t, ev: '', como: '' };
+  m.es = ORDEM_ES.map(t => { const x = achar(t); return { t: x.t, ev: x.ev || '', como: x.como || '' }; });
+  m.e3 = (m.e3 || []).filter(x => !MOVIDAS.includes(x.t));
+  m.e4 = (m.e4 || []).filter(x => !MOVIDAS.includes(x.t));
+  if (!m.e4.some(x => x.t === T_DISPOSITIVOS)) m.e4.push({ t: T_DISPOSITIVOS, ev: '', como: '' });
+  return true;
+}
+function migrarOferta(o) {
+  if (!o.etapas || o.etapas.es) return false;
+  const pegar = t => {
+    for (const ek of ['e3', 'e4']) { const ts = o.etapas[ek] || {}; for (const id in ts) if (ts[id].t === t) { const v = ts[id]; delete ts[id]; return v; } }
+    return null;
+  };
+  const es = {};
+  ORDEM_ES.forEach((t, i) => { es['t' + (i + 1)] = { ...(pegar(t) || { t, ev: '', como: '', feito: false, link: '', nota: '' }), ordem: i + 1 }; });
+  o.etapas.es = es;
+  for (const ek of ['e3', 'e4']) tarefasDe(o, ek).forEach((t, i) => { o.etapas[ek][t.id].ordem = i + 1; });
+  const e4 = tarefasDe(o, 'e4');
+  if (!e4.some(t => t.t === T_DISPOSITIVOS)) {
+    o.etapas.e4 = o.etapas.e4 || {};
+    o.etapas.e4.disp = { t: T_DISPOSITIVOS, ev: '', como: '', ordem: e4.length + 1, feito: false, link: '', nota: '' };
+  }
+  return true;
+}
 const PLATAFORMAS = ['Cakto', 'Greenn', 'WiaPay', 'Kiwify', 'Hotmart', 'Outra'];
 const FICHA = [
   { k: 'publico', t: 'Público-alvo', ph: 'Quem compra? Profissão, momento de vida, nível de conhecimento.' },
@@ -747,7 +790,7 @@ function renderSide() {
         <span class="tag" style="--c:${r.concluida ? 'var(--lime)' : e ? cv(e.cor) : 'var(--s1)'}">${pctTxt(r.pct)}</span></span>
     </button>`;
   }).join('');
-  return `<div class="brand"><b>Sistema de Execução</b><small>Low Ticket · 5 etapas</small></div>${tiles}
+  return `<div class="brand"><b>Sistema de Execução</b><small>Low Ticket · 6 etapas</small></div>${tiles}
     <div class="list-head"><i></i>Ofertas<span class="n">${lista.length}</span></div>
     <input class="side-search" id="busca" type="search" placeholder="Buscar por nome ou ID" value="${esc(busca)}" aria-label="Buscar oferta">
     <div class="chips">${chip('andamento', 'Em andamento')}${chip('concluidas', 'Concluídas')}${chip('todas', 'Todas')}${chip('arquivadas', 'Arquivadas')}</div>
@@ -756,7 +799,7 @@ function renderSide() {
 
 function renderPainel() {
   const rs = ofertas.filter(o => !o.arquivada).map(o => ({ o, r: resumo(o) }));
-  const head = `<div class="head"><div><h1>Painel</h1><p>Onde cada oferta está no método das 5 etapas.</p></div><button class="btn lime" data-act="nova"><span class="ico">${I.plus}</span>Nova oferta</button></div>`;
+  const head = `<div class="head"><div><h1>Painel</h1><p>Onde cada oferta está no método das 6 etapas.</p></div><button class="btn lime" data-act="nova"><span class="ico">${I.plus}</span>Nova oferta</button></div>`;
   if (!rs.length) return head + `<div class="empty"><h3>Nenhuma oferta ativa</h3><p>Cadastre o nome e a origem (Mineração ou Concepção). O sistema gera na hora o checklist das etapas 02 a 05.</p><button class="btn lime" data-act="nova">Cadastrar oferta</button></div>`;
   const cols = [...ETAPAS.map(e => ({ key: e.key, nome: e.num + ' · ' + e.nome, cor: e.cor })), { key: 'ok', nome: 'Concluídas', cor: '--lime' }];
   const board = cols.map(c => {
@@ -1285,14 +1328,20 @@ function aplicarHash() {
   if (/^LT-[0-9A-F]{8}$/i.test(h) && ofertas.some(o => o.id === h.toUpperCase())) { view = 'oferta'; focoId = h.toUpperCase(); }
   else if (h === 'modelos' || h === 'backup') view = h;
 }
+function migrarTudo() {
+  const m = clone(modelos);
+  if (migrarModelos(m)) salvarModelos(m);
+  for (const o of ofertas) if (migrarOferta(o)) gravarInteira(o);
+}
 function conectar() {
   unsubs.forEach(u => { try { u(); } catch {} }); unsubs = [];
-  let okOfertas = false;
-  unsubs.push(S.watchModelos(d => { modelos = d && d.listas ? clone(d.listas) : clone(MODELOS_PADRAO); if (okOfertas) scheduleRender(); }));
+  let okOfertas = false, okModelos = false, migrou = false;
+  const tentarMigrar = () => { if (okOfertas && okModelos && !migrou) { migrou = true; migrarTudo(); } };
+  unsubs.push(S.watchModelos(d => { modelos = d && d.listas ? clone(d.listas) : clone(MODELOS_PADRAO); okModelos = true; tentarMigrar(); if (okOfertas) scheduleRender(); }));
   unsubs.push(S.watchOfertas(lista => {
     ofertas = lista;
     for (const id in pend) { const o = ofertas.find(x => x.id === id); if (o) merge(o, pend[id]); }
-    okOfertas = true; mode = 'remote'; aplicarHash(); scheduleRender();
+    okOfertas = true; mode = 'remote'; tentarMigrar(); aplicarHash(); scheduleRender();
   }, err => {
     if (err && err.code === 'permission-denied') { mode = 'semacesso'; render(); }
     else toast('Não foi possível carregar as ofertas. Recarregue a página.');
@@ -1362,7 +1411,7 @@ async function iniciar() {
   if (db) { origem = 'claude'; S = adapterClaude(db); conectar(); return; }
   origem = 'local'; mode = 'local';
   try { const s = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); if (s) { ofertas = s.ofertas || []; if (s.modelos) modelos = s.modelos; } } catch {}
-  aplicarHash(); render();
+  migrarTudo(); aplicarHash(); render();
 }
 iniciar();
 })();
