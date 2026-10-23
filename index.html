@@ -1,0 +1,1142 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1C1D1B">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+</head>
+<body>
+<title>Sistema de Execução Low Ticket</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: trilho de ícones escuro + barra lateral escura (indicadores e lista de ofertas) + área principal clara de cantos amplos; acentos verde-limão e lilás. */
+:root{
+  --shell:#1C1D1B; --shell-2:#272825; --shell-3:#31322F; --shell-line:#3B3C38; --shell-fg:#F1F1EC; --shell-muted:#9B9C95;
+  --main:#ECECE8; --surface:#FFFFFF; --surface-2:#E3E3DE; --line:#D8D8D2; --fg:#1C1D1B; --muted:#6A6B65;
+  --lime:#DCF07A; --lime-2:#F0F8C8; --lav:#B9A9F2; --lav-2:#E6E0FB; --coral:#F27F86; --coral-2:#FCDDDF; --sky:#94D3EE; --sky-2:#DAF0F9;
+  --ink:#1C1D1B; --danger:#C4373F;
+  --s1:#A9AAA3; --s2:var(--lav); --s3:var(--coral); --s4:var(--sky); --s5:var(--lime);
+  --f-ui:"Urbanist","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  --r-xl:28px; --r-lg:20px; --r-md:14px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --shell:#121311; --shell-2:#1D1E1B; --shell-3:#262724; --shell-line:#31322E; --shell-fg:#F1F1EC; --shell-muted:#9B9C95;
+  --main:#242522; --surface:#2E2F2C; --surface-2:#393A36; --line:#454641; --fg:#EFEFEA; --muted:#A8A9A1; --danger:#F08A90; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --shell:#121311; --shell-2:#1D1E1B; --shell-3:#262724; --shell-line:#31322E; --shell-fg:#F1F1EC; --shell-muted:#9B9C95;
+  --main:#242522; --surface:#2E2F2C; --surface-2:#393A36; --line:#454641; --fg:#EFEFEA; --muted:#A8A9A1; --danger:#F08A90; color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--shell);color:var(--fg);font:15px/1.5 var(--f-ui);-webkit-font-smoothing:antialiased;margin:0}
+h1,h2,h3{text-wrap:balance;margin:0;letter-spacing:-.01em;font-weight:600}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--lav);outline-offset:2px}
+[hidden]{display:none!important}
+.ico svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;display:block}
+
+/* casca */
+.shell{height:100%;display:grid;grid-template-columns:76px 330px minmax(0,1fr);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+.shell.solo{grid-template-columns:76px minmax(0,1fr)}
+.rail{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 0;color:var(--shell-muted)}
+.logo{width:44px;height:44px;display:grid;place-items:center;color:var(--lime);margin-bottom:14px}
+.logo svg{width:34px;height:34px;stroke-width:3.4}
+.rail-btn{width:44px;height:44px;border-radius:50%;border:1px solid var(--shell-line);background:none;color:var(--shell-muted);display:grid;place-items:center;cursor:pointer}
+.rail-btn:hover{color:var(--shell-fg);border-color:var(--shell-muted)}
+.rail-btn[aria-current="page"]{background:var(--lime);border-color:var(--lime);color:var(--ink)}
+.rail-btn.add{background:var(--shell-3);color:var(--lime);border-color:transparent}
+.rail .grow{flex:1}
+.avatar{width:40px;height:40px;border-radius:50%;background:var(--lav);color:var(--ink);display:grid;place-items:center;font-weight:700;border:0;cursor:pointer}
+
+.side{overflow:auto;padding:18px 14px 24px 4px;color:var(--shell-fg);display:flex;flex-direction:column;gap:18px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--shell-2);border-radius:var(--r-lg);padding:14px;min-height:100px;display:flex;flex-direction:column;justify-content:space-between}
+.tile span{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--shell-muted)}
+.tile span i{width:14px;height:14px;border-radius:50%;border:2px solid var(--c)}
+.tile strong{font-size:34px;font-weight:500;text-align:right;font-variant-numeric:tabular-nums;line-height:1}
+.tile strong small{font-size:15px;color:var(--shell-muted)}
+.list-head{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:600}
+.list-head i{width:14px;height:14px;border-radius:4px;border:2px solid var(--lime)}
+.list-head .n{margin-left:auto;font:500 12px var(--f-mono);color:var(--shell-muted)}
+.side-search{background:var(--shell-2);border:1px solid var(--shell-line);border-radius:99px;padding:8px 14px;color:var(--shell-fg);width:100%}
+.side-search::placeholder{color:var(--shell-muted)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--shell-line);background:none;color:var(--shell-muted);border-radius:99px;padding:4px 12px;font-size:13px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--shell-fg);color:var(--shell);border-color:var(--shell-fg)}
+.olist{display:grid;gap:10px}
+.ocard{background:var(--shell-2);border:0;border-radius:var(--r-lg);padding:14px;display:grid;gap:10px;text-align:left;color:var(--shell-fg);cursor:pointer;width:100%;position:relative}
+.ocard:hover{background:var(--shell-3)}
+.ocard .arrow{position:absolute;top:12px;right:12px;color:var(--shell-muted)}
+.ocard .arrow svg{width:16px;height:16px}
+.ocard b{font-weight:600;font-size:15.5px;padding-right:22px;line-height:1.25}
+.ocard small{color:var(--shell-muted);font-size:12.5px;margin-top:-6px}
+.ocard .row{display:flex;align-items:center;gap:8px;border:1px solid var(--shell-line);border-radius:12px;padding:8px 10px;font-size:12.5px}
+.ocard .row .ico svg{width:16px;height:16px}
+.ocard .row .tag{margin-left:auto}
+.ocard[aria-current="true"]{background:var(--lime);color:var(--ink)}
+.ocard[aria-current="true"] small,.ocard[aria-current="true"] .arrow{color:#3F4436}
+.ocard[aria-current="true"] .row{border-color:rgb(28 29 27 / .18);background:rgb(255 255 255 / .35)}
+.side-empty{color:var(--shell-muted);font-size:14px;padding:4px 2px}
+
+.main{overflow:auto;background:var(--main);border-radius:var(--r-xl);margin:12px 12px 12px 0;padding:28px 30px 48px;display:grid;grid-template-columns:minmax(0,1fr);gap:24px;align-content:start}
+.main>*{min-width:0}
+
+/* comuns */
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;background:var(--c,var(--surface-2));color:var(--ink);white-space:nowrap}
+.tag.soft{background:var(--surface-2);color:var(--fg)}
+.idchip{font:500 11.5px var(--f-mono);letter-spacing:.04em;color:var(--muted);white-space:nowrap}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);padding:9px 16px;border-radius:99px;cursor:pointer;font-weight:600;font-size:14px;text-decoration:none;color:var(--fg);white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.lime{background:var(--lime);border-color:var(--lime);color:var(--ink)}
+.btn.dark{background:var(--fg);border-color:var(--fg);color:var(--main)}
+.btn.danger{color:var(--danger);border-color:var(--danger);background:none}
+.btn.danger.solid{background:var(--danger);color:#fff}
+.btn.sm{padding:6px 12px;font-size:13px}
+.btn .ico svg{width:16px;height:16px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.round{width:44px;height:44px;border-radius:50%;background:var(--lime);color:var(--ink);border:0;display:grid;place-items:center;cursor:pointer;text-decoration:none;flex:none}
+.round:hover{filter:brightness(.95)}
+.round[aria-disabled="true"]{background:var(--surface-2);color:var(--muted);pointer-events:none}
+.card{background:var(--surface);border-radius:var(--r-lg);padding:20px}
+.label{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.bar{height:6px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--c,var(--fg));border-radius:inherit}
+.inp,.field input,.field select,.field textarea{border:1px solid var(--line);background:var(--main);border-radius:12px;padding:9px 12px;width:100%;min-width:0;color:var(--fg)}
+.field{display:grid;gap:5px;min-width:0}
+.field textarea,textarea.inp{resize:vertical;min-height:70px;line-height:1.45}
+.money{position:relative;display:block}
+.money::before{content:"R$";position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;pointer-events:none}
+.money input{padding-left:36px;font-variant-numeric:tabular-nums}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.head h1{font-size:34px;font-weight:500;letter-spacing:-.02em}
+.head p{margin:4px 0 0;color:var(--muted)}
+.sec-title{display:flex;align-items:baseline;gap:12px;justify-content:space-between;flex-wrap:wrap;margin-bottom:12px}
+.sec-title h2{font-size:20px}
+.sec-title p{margin:0;color:var(--muted);font-size:14px}
+
+/* painel */
+.board-scroll{overflow-x:auto;padding-bottom:6px}
+.board{display:grid;grid-template-columns:repeat(5,minmax(200px,1fr));gap:12px;min-width:min-content}
+.col{background:var(--surface-2);border-radius:var(--r-lg);padding:10px;display:flex;flex-direction:column;gap:8px;min-height:130px}
+.col-head{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;padding:4px 6px}
+.col-head .n{margin-left:auto;font:500 12px var(--f-mono);color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c);flex:none}
+.bcard{background:var(--surface);border:0;border-radius:var(--r-md);padding:12px;display:grid;gap:8px;cursor:pointer;text-align:left;width:100%;color:var(--fg)}
+.bcard:hover{outline:2px solid var(--c)}
+.bcard b{font-weight:600;line-height:1.3}
+.bcard .meta{display:flex;justify-content:space-between;gap:8px;font:500 12px var(--f-mono);color:var(--muted)}
+.col-empty{font-size:13px;color:var(--muted);padding:2px 6px}
+.table-scroll{overflow-x:auto;background:var(--surface);border-radius:var(--r-lg)}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:960px}
+th{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);text-align:left;padding:14px 16px 10px;font-weight:600;border-bottom:1px solid var(--line)}
+td{padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:var(--main)}
+td.num{font:500 13px var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.empty{background:var(--surface);border-radius:var(--r-lg);padding:40px 20px;text-align:center;display:grid;gap:12px;justify-items:center}
+.empty h3{font-size:20px}
+.empty p{margin:0;color:var(--muted);max-width:52ch}
+
+/* oferta */
+.o-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:start}
+.o-name{font:500 38px/1.1 var(--f-ui);letter-spacing:-.02em;border:1px solid transparent;background:none;border-radius:12px;padding:2px 8px;margin-left:-9px;width:100%;color:var(--fg)}
+.o-name:hover{border-color:var(--line)}
+.o-name:focus{border-color:var(--lav);outline:none;background:var(--surface)}
+.o-meta{display:flex;flex-wrap:wrap;gap:6px 18px;color:var(--muted);font-size:14px;margin-top:8px}
+.o-meta b{color:var(--fg);font-weight:600}
+.o-actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.o-tags{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:0}
+.tab{background:none;border:0;padding:10px 18px;border-radius:14px 14px 0 0;cursor:pointer;color:var(--muted);font-weight:600}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--fg)}
+.o-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+.o-col{display:grid;gap:14px;min-width:0}
+.o-right{display:grid;gap:14px;position:sticky;top:0}
+.lavcard{background:var(--lav);color:var(--ink);border-radius:var(--r-lg);padding:20px;display:grid;gap:12px}
+.lavcard .big{font-size:44px;font-weight:500;line-height:1;font-variant-numeric:tabular-nums}
+.lavcard .label,.limecard .label{color:#3D3A52}
+.limecard .label{color:#454B2A}
+.steps{display:grid;gap:8px}
+.stp{display:flex;align-items:center;gap:10px;font-size:14px;background:none;border:0;padding:0;color:var(--ink);text-align:left;cursor:pointer}
+.stp i{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;border:1.5px solid rgb(28 29 27 / .35);flex:none}
+.stp i svg{width:14px;height:14px;fill:none;stroke:var(--ink);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.stp.done i{background:rgb(255 255 255 / .55);border-color:transparent}
+.stp.cur{font-weight:700}
+.stp span{flex:1}
+.stp small{font:500 12px var(--f-mono)}
+.limecard{background:var(--lime);color:var(--ink);border-radius:var(--r-lg);padding:20px;display:grid;gap:10px}
+.limecard .tag,.lavcard .tag{background:rgb(255 255 255 / .65)}
+.whitebox{background:rgb(255 255 255 / .7);border-radius:12px;padding:10px 12px;font-size:14px;display:grid;gap:2px}
+.whitebox b{font-weight:600}
+
+.stage{background:var(--surface);border-radius:var(--r-lg);overflow:hidden}
+.stage>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:14px;padding:16px 18px;flex-wrap:wrap}
+.stage>summary::-webkit-details-marker{display:none}
+.snum{width:40px;height:40px;border-radius:50%;background:var(--c);color:var(--ink);display:grid;place-items:center;font:500 14px var(--f-mono);flex:none}
+.stage>summary h3{font-size:17px}
+.stage>summary small{display:block;color:var(--muted);font-size:13px;font-weight:500}
+.scount{margin-left:auto;display:flex;align-items:center;gap:10px;font:500 13px var(--f-mono);color:var(--muted)}
+.scount .bar{width:90px}
+.chev{transition:transform .15s;color:var(--muted);font-size:20px;line-height:1}
+.stage[open] .chev{transform:rotate(90deg)}
+.sbody{padding:0 18px 16px 72px;display:grid;gap:2px}
+.sinfo{background:var(--main);border-radius:12px;padding:10px 14px;font-size:13.5px;color:var(--muted);display:grid;gap:2px;margin-bottom:6px}
+.sinfo p{margin:0}
+.sinfo b{color:var(--fg);font-weight:600}
+.task{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:12px;align-items:start;padding:11px 0;border-bottom:1px solid var(--line)}
+.task:last-of-type{border-bottom:0}
+.check{appearance:none;width:24px;height:24px;border:1.8px solid var(--line);border-radius:50%;cursor:pointer;display:grid;place-items:center;margin:0;background:var(--surface)}
+.check:hover{border-color:var(--muted)}
+.check:checked{background:var(--c);border-color:var(--c)}
+.check:checked::after{content:"";width:5px;height:10px;border:solid var(--ink);border-width:0 2px 2px 0;transform:translateY(-1px) rotate(45deg)}
+.ttext{display:grid;gap:4px;min-width:0}
+.ttext>span{line-height:1.45}
+.task.done .ttext>span{color:var(--muted);text-decoration:line-through}
+.task small{color:var(--muted);font-size:13px}
+.task small b{font-weight:600;color:var(--fg)}
+.nextbadge{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:var(--c);color:var(--ink);padding:1px 8px;border-radius:99px;margin-left:8px;white-space:nowrap}
+.tdet{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:6px}
+.tdet .inp{font-size:13.5px;padding:7px 10px}
+.mini{background:none;border:0;color:var(--muted);cursor:pointer;padding:4px 8px;border-radius:8px;font-size:13px;white-space:nowrap;font-weight:600;text-decoration:none}
+.mini:hover{background:var(--main);color:var(--fg)}
+.add-row{display:flex;gap:8px;padding-top:10px}
+.add-row .inp{flex:1}
+.danger-zone{display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:14px}
+.banner{background:var(--lav-2);color:var(--ink);border-radius:var(--r-md);padding:10px 14px;font-size:14px}
+
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+.grid3{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1fr) minmax(0,1.6fr);gap:14px}
+.card h3{font-size:18px;margin-bottom:4px}
+.card>p.hint{margin:0 0 14px;color:var(--muted);font-size:14px}
+.rows{display:grid;gap:8px}
+.lrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) auto;gap:8px;align-items:center}
+.lrow.bump{grid-template-columns:minmax(0,1.6fr) 140px auto}
+.sum{display:flex;gap:20px;flex-wrap:wrap;background:var(--main);border-radius:12px;padding:12px 14px;font-size:14px}
+.sum b{font:500 15px var(--f-mono)}
+
+.gen{background:var(--surface);border-radius:var(--r-lg);padding:20px;display:grid;gap:12px}
+.gen-head{display:flex;gap:14px;align-items:flex-start}
+.gen-head .round{width:40px;height:40px;background:var(--c)}
+.gen-head h3{font-size:17px}
+.gen-head p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.warn{font-size:13px;background:var(--coral-2);color:var(--ink);border-radius:10px;padding:8px 12px}
+.gen-acts{display:flex;gap:8px;flex-wrap:wrap}
+.gen details summary{cursor:pointer;color:var(--muted);font-size:13.5px;font-weight:600}
+.gen pre{white-space:pre-wrap;background:var(--main);border-radius:12px;padding:12px;font:13px/1.5 var(--f-mono);max-height:320px;overflow:auto;margin:8px 0 0}
+
+/* modelos e backup */
+.tpl{background:var(--surface);border-radius:var(--r-lg);padding:18px 20px;display:grid;gap:10px}
+.tpl-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tpl-head h3{font-size:17px}
+.tpl-head p{margin:0;color:var(--muted);font-size:13.5px;flex-basis:100%}
+.tpl-row,.tpl-cols{display:grid;grid-template-columns:24px minmax(0,2.2fr) minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:start}
+.tpl-row .ord{font:500 12px var(--f-mono);color:var(--muted);padding-top:10px;text-align:right}
+.tpl-row textarea{min-height:44px}
+.acts{display:flex}
+.savebar{position:sticky;bottom:0;background:var(--fg);color:var(--main);border-radius:var(--r-md);padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.savebar span{margin-right:auto}
+.savebar .btn{border-color:transparent}
+
+/* modal, aviso, carregando */
+.overlay{position:fixed;inset:0;background:rgb(12 13 11 / .55);display:grid;place-items:center;z-index:20;padding:16px}
+.modal{background:var(--surface);border-radius:var(--r-xl);padding:26px;width:min(560px,100%);display:grid;gap:14px;max-height:100%;overflow:auto}
+.modal h2{font-size:24px;font-weight:600}
+.modal p{margin:0;color:var(--muted);font-size:14px}
+.radios{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.radio{border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:2px;cursor:pointer;position:relative}
+.radio:has(input:checked){border-color:var(--ink);background:var(--lime);color:var(--ink)}
+.radio:has(input:checked) small{color:#454B2A}
+.radio input{position:absolute;opacity:0;pointer-events:none}
+.radio b{font-weight:700}
+.radio small{color:var(--muted);font-size:12.5px}
+.modal-acts{display:flex;justify-content:flex-end;gap:8px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--lime);color:var(--ink);padding:10px 18px;border-radius:99px;font-size:14px;font-weight:600;z-index:30;max-width:calc(100% - 32px);box-shadow:0 6px 24px rgb(0 0 0 / .25)}
+.skel{height:110px;border-radius:var(--r-lg);background:var(--surface-2);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.55}}
+.center{display:grid;place-items:center;min-height:70vh}
+.login{background:var(--surface);border-radius:var(--r-xl);padding:32px;max-width:440px;display:grid;gap:14px;text-align:center;justify-items:center}
+.login h1{font-size:28px;font-weight:600}
+.login p{margin:0;color:var(--muted)}
+
+@media (max-width:1180px){.o-grid{grid-template-columns:minmax(0,1fr)}.o-right{position:static;grid-template-columns:1fr 1fr}}
+@media (max-width:1000px){
+  html,body{height:auto}
+  .shell,.shell.solo{height:auto;grid-template-columns:minmax(0,1fr)}
+  .rail{flex-direction:row;padding:10px max(16px,env(safe-area-inset-left,0px));position:sticky;top:0;z-index:6;background:var(--shell)}
+  .logo{margin:0 6px 0 0}
+  .rail .grow{flex:1}
+  .side{padding:4px 16px 8px;overflow:visible}
+  .tiles{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .tile{min-height:80px;padding:10px}
+  .tile strong{font-size:26px}
+  .olist{display:flex;overflow-x:auto;gap:10px;padding-bottom:4px}
+  .ocard{width:250px;flex:none}
+  .main{margin:0 8px 8px;padding:22px 16px 40px;overflow:visible}
+}
+@media (max-width:640px){
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .o-head{grid-template-columns:minmax(0,1fr)}
+  .o-tags{justify-content:flex-start}
+  .o-right{grid-template-columns:minmax(0,1fr)}
+  .o-name{font-size:30px}
+  .grid2,.grid3,.tdet{grid-template-columns:minmax(0,1fr)}
+  .sbody{padding-left:18px}
+  .lrow,.lrow.bump{grid-template-columns:minmax(0,1fr) auto}
+  .lrow>:nth-child(2){grid-column:1}
+  .tpl-row,.tpl-cols{grid-template-columns:24px minmax(0,1fr)}
+  .tpl-row>:nth-child(n+3){grid-column:2}
+  .tpl-cols>:nth-child(n+3){display:none}
+  .radios{grid-template-columns:1fr}
+  .head h1{font-size:28px}
+}
+@media (prefers-reduced-motion:reduce){.skel{animation:none}.chev{transition:none}}
+</style>
+
+<div class="shell" id="shell">
+  <nav class="rail" aria-label="Navegação">
+    <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/></svg></div>
+    <button type="button" class="rail-btn ico" data-act="nav" data-view="painel" id="nav-painel" title="Painel" aria-label="Painel"></button>
+    <button type="button" class="rail-btn ico" data-act="nav" data-view="modelos" id="nav-modelos" title="Modelos de tarefas" aria-label="Modelos de tarefas"></button>
+    <button type="button" class="rail-btn ico" data-act="nav" data-view="backup" id="nav-backup" title="Backup" aria-label="Backup"></button>
+    <button type="button" class="rail-btn add ico" data-act="nova" id="nav-nova" title="Nova oferta" aria-label="Nova oferta"></button>
+    <span class="grow"></span>
+    <button type="button" class="avatar" id="conta" data-act="sair" hidden></button>
+  </nav>
+  <aside class="side" id="side" aria-label="Ofertas"></aside>
+  <main class="main" id="app"></main>
+</div>
+<div id="modal-root"></div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(() => {
+'use strict';
+const app = document.getElementById('app');
+const side = document.getElementById('side');
+const shell = document.getElementById('shell');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+const isObj = v => v && typeof v === 'object' && !Array.isArray(v);
+function merge(t, p) {
+  for (const k in p) {
+    if (isObj(p[k]) && isObj(t[k])) merge(t[k], p[k]);
+    else t[k] = (isObj(p[k]) || Array.isArray(p[k])) ? clone(p[k]) : p[k];
+  }
+  return t;
+}
+const pathPatch = (path, v) => { const ks = path.split('.'); const root = {}; let c = root; ks.forEach((k, i) => { if (i === ks.length - 1) c[k] = v; else c = c[k] = {}; }); return root; };
+const getPath = (o, path) => path.split('.').reduce((a, k) => (a == null ? a : a[k]), o);
+
+const I = {
+  grid: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>',
+  list: '<svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>',
+  backup: '<svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>',
+  plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  copy: '<svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></svg>',
+  archive: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9a2 2 0 002 2h10a2 2 0 002-2V9M10 13h4"/></svg>',
+  page: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 6.5h.01M10 6.5h.01"/></svg>',
+  folder: '<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>',
+  doc: '<svg viewBox="0 0 24 24"><path d="M7 3h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>',
+  check: '<svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>',
+  arrow: '<svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>',
+  pen: '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></svg>',
+  film: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/></svg>',
+  hook: '<svg viewBox="0 0 24 24"><path d="M12 3v9a4 4 0 11-4-4"/></svg>',
+  book: '<svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2z"/><path d="M4 19V5M8 7h7"/></svg>'
+};
+document.getElementById('nav-painel').innerHTML = I.grid;
+document.getElementById('nav-modelos').innerHTML = I.list;
+document.getElementById('nav-backup').innerHTML = I.backup;
+document.getElementById('nav-nova').innerHTML = I.plus;
+
+/* ---------- Método: etapas e modelos (da planilha) ---------- */
+const ETAPA1 = { key: 'e1', num: '01', nome: 'Mineração', cor: '--s1' };
+const ETAPAS = [
+  { key: 'e2', num: '02', nome: 'Desenvolvimento', titulo: 'Desenvolvimento da oferta', cor: '--s2',
+    desc: 'Modelagem para ideias mineradas; refinamento para concepções próprias.',
+    foco: 'Pesquisa de demanda + comentários reais + mapa de vantagens + ficha de concepção.',
+    refs: 'YouTube, Google Trends, Reclame Aqui, marketplaces, Mapa das Vantagens e Obra de Arte 100k.' },
+  { key: 'e3', num: '03', nome: 'Criação do Produto', titulo: 'Criação do Produto', cor: '--s3',
+    desc: 'Produza o material principal, os bônus e os order bumps definidos na oferta.',
+    foco: 'Da redação à diagramação, teste dos arquivos e cadastro no checkout.',
+    refs: 'ChatGPT/Claude, Pinterest, Lovable e Cakto/Green/WiaPay.' },
+  { key: 'e4', num: '04', nome: 'Página de Vendas', titulo: 'Página de Vendas', cor: '--s4',
+    desc: 'Escreva a copy, monte a página no Lovable e conecte checkout e rastreamento.',
+    foco: 'Promessas honestas; imagens fiéis ao produto; experiência mobile.',
+    refs: 'ChatGPT/Claude, Lovable, WebP, Pixel Meta e Testar Eventos.' },
+  { key: 'e5', num: '05', nome: 'Criativos', titulo: 'Criativos', cor: '--s5',
+    desc: 'Produza anúncios estáticos e em vídeo com demonstrações reais do produto.',
+    foco: 'Testar ganchos visuais e textuais, editar versões curtas e organizar a pasta final.',
+    refs: 'Pinterest, Behance, Google Flow/Gemini, ElevenLabs, CapCut, Drive.' }
+];
+const ETAPA_POR = Object.fromEntries(ETAPAS.map(e => [e.key, e]));
+const ROTA = { 'Mineração': 'Modelagem', 'Concepção': 'Refinamento' };
+const L = (...ts) => ts.map(t => ({ t, ev: '', como: '' }));
+const DEV = [
+  'Desenvolver uma ideia de produto mudando algum aspecto da oferta minerada (Nicho, público, dor, mecanismo e formato) ou refinar uma ideia pré-concebida.',
+  'Pesquisar sobre a ideia do produto no youtube, google trends, reclame aqui, marketing places para ver se o produto soluciona uma dor latente.',
+  'Registrar os melhores comentários para conhecermos a fundo o público. (Essa pesquisa de público será essencial para escrever a copy da página de vendas).',
+  'Criar pontos de vantagens para nossa oferta (Se inspirar no mapa das vantagens - Mentoria O Processo).',
+  'Preencher o documento da idéia modelada ou refinada. (Se inspirar no doc Obra de Arte 100k - Mentoria O Processo).'
+];
+const MODELOS_PADRAO = {
+  e2_Modelagem: L(...DEV),
+  e2_Refinamento: L(...DEV),
+  e3: L(
+    'Criar o texto do entregável principal, bônus e order bumps.',
+    'Fazer o planejamento da estrutura (capa, contracapa, sumário, corpo…).',
+    'Buscar uma referência visual de página no pinterest.',
+    'Criar no lovable ou no chat GPT (Skill do Lovable ou skill do Codex do Fernando Oliveira PRO).',
+    'Cadastrar o produto principal e os order bumps plataforma (Cakto, Green, Wiapay).'),
+  e4: L(
+    'Escrever a copy da página de vendas com o ChatGPT ou Claude e revisar tudo ajustando ao vocabulário e aos argumentos e dores da persona.',
+    'Remixar o modelo de página de vendas no lovable.',
+    'Criar todos as imagens dos blocos: mockup da hero, oferta, bônus e tudo que vc vai receber, e imagens mostrando pessoas usando o produto no dia-a-dia.',
+    'Comprimir e converter todas as imagens para WEBP.',
+    'Enviar copy finalizada e as imagens para o site remixado no Lovable.',
+    'Colocar link do checkout nos CTA.',
+    'Criar e instalar pixel na página de vendas.',
+    'Verificar os disparos dos eventos da Meta. (Teste de eventos na Meta ou na pedindo ao Lovable).'),
+  e5: L(
+    'Verificar se há criativos validados de concorrentes para modelar.',
+    'Pegar referências de imagens para criativos. (Pinterest, Behance, biblioteca de anúncios).',
+    'Imprimir 10 folhas do entregável.',
+    'Gravar vários takes das folhas do entregável.',
+    'Baixar vídeos b-roll (Pinterest, tiktok ou criar cenas no GoogleFlow ou Gemini).',
+    'Criar e humanizar a copy dos criativos de vídeo demonstrativos (Foco principal em desenvolver um gancho visual e textual que prenda atenção no gancho, usar técnica de humanização curso do Balaclava).',
+    'Fazer as narrações no Eleven Labs.',
+    'Editar os vídeos no capcut. (Vídeos de 20 a 40 segundos, com takes curtos, legendas e música de fundo.',
+    'Guardar todos os vídeos e imagens da oferta dentro de uma pasta no google Drive.')
+};
+const LISTAS = [
+  { k: 'e2_Modelagem', etapa: 'e2', rotulo: '02 · Desenvolvimento · rota Modelagem', ajuda: 'Gerada para ofertas de origem Mineração.' },
+  { k: 'e2_Refinamento', etapa: 'e2', rotulo: '02 · Desenvolvimento · rota Refinamento', ajuda: 'Gerada para ofertas de origem Concepção (ideia própria).' },
+  { k: 'e3', etapa: 'e3', rotulo: '03 · Criação do Produto', ajuda: 'Igual para todas as ofertas.' },
+  { k: 'e4', etapa: 'e4', rotulo: '04 · Página de Vendas', ajuda: 'Igual para todas as ofertas.' },
+  { k: 'e5', etapa: 'e5', rotulo: '05 · Criativos', ajuda: 'Igual para todas as ofertas.' }
+];
+const PLATAFORMAS = ['Cakto', 'Greenn', 'WiaPay', 'Kiwify', 'Hotmart', 'Outra'];
+const FICHA = [
+  { k: 'publico', t: 'Público-alvo', ph: 'Quem compra? Profissão, momento de vida, nível de conhecimento.' },
+  { k: 'dor', t: 'Dor principal', ph: 'O problema urgente que o produto resolve.', area: true },
+  { k: 'promessa', t: 'Promessa / transformação', ph: 'O resultado que a pessoa quer alcançar.', area: true },
+  { k: 'mecanismo', t: 'Mecanismo único', ph: 'O jeito diferente como o produto resolve.', area: true },
+  { k: 'formato', t: 'Formato do entregável', ph: 'E-book, mapa visual, planner, checklist, kit…' },
+  { k: 'vantagens', t: 'Vantagens da oferta', ph: 'Uma por linha (Mapa das Vantagens).', area: true },
+  { k: 'comentarios', t: 'Comentários reais do público', ph: 'Cole os melhores comentários, um por linha.', area: true },
+  { k: 'objecoes', t: 'Objeções', ph: 'O que impede a compra, uma por linha.', area: true }
+];
+const FICHA_NOME = Object.fromEntries(FICHA.map(f => [f.k, f.t]));
+
+/* ---------- Estado ---------- */
+let mode = 'loading';   // loading | remote | local | login | setup
+let origem = '';        // claude | firebase | local
+let S = null;           // adaptador de armazenamento
+let unsubs = [];
+let ofertas = [];
+let modelos = clone(MODELOS_PADRAO);
+let view = 'painel';
+let focoId = null;
+let aba = 'checklist';
+let sideFiltro = 'andamento';
+let busca = '';
+let draft = null;
+let confirmDel = false;
+let importPrev = null;
+let contaEmail = '';
+const abertas = {};
+const detalhes = new Set();
+const pend = {}, timers = {}, chains = {};
+let inflight = 0;
+let needRender = false;
+const LS_KEY = 'lt-sistema-execucao-v1';
+
+const cv = k => `var(${k})`;
+const fmtData = iso => { try { return new Date(iso).toLocaleDateString('pt-BR'); } catch { return ''; } };
+const novoId = () => { const a = new Uint8Array(4); crypto.getRandomValues(a); return 'LT-' + [...a].map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase(); };
+const parseValor = s => { const n = parseFloat(String(s || '').replace(/[^\d,.-]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.')); return isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null; };
+const fmtValor = n => typeof n === 'number' ? n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—';
+const fmtEdit = n => typeof n === 'number' ? n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+const urlOk = u => /^https?:\/\//i.test(u || '');
+const optsPlataforma = sel => `<option value="">Selecionar…</option>` + [...PLATAFORMAS, ...(sel && !PLATAFORMAS.includes(sel) ? [sel] : [])]
+  .map(p => `<option ${p === sel ? 'selected' : ''}>${esc(p)}</option>`).join('');
+const listaPara = (ek, org) => (ek === 'e2' ? modelos['e2_' + (ROTA[org] || 'Modelagem')] : modelos[ek]) || [];
+const tarefasDe = (o, ek) => Object.entries((o.etapas || {})[ek] || {}).map(([id, v]) => ({ id, ...v })).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+const itensDe = m => Object.entries(m || {}).map(([id, v]) => ({ id, ...v })).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+
+function resumo(o) {
+  let tot = 0, ok = 0, atual = null, prox = null; const por = {};
+  for (const e of ETAPAS) {
+    const ts = tarefasDe(o, e.key); const d = ts.filter(t => t.feito).length;
+    por[e.key] = { tot: ts.length, ok: d }; tot += ts.length; ok += d;
+    if (!atual && d < ts.length) { atual = e; prox = ts.find(t => !t.feito); }
+  }
+  return { tot, ok, pct: tot ? ok / tot : 0, atual, prox, concluida: tot > 0 && ok === tot, por };
+}
+const pctTxt = p => Math.round(p * 100) + '%';
+const tagEtapa = e => `<span class="tag" style="--c:${cv(e.cor)}">${e.num} · ${esc(e.nome)}</span>`;
+function proximaEtapa(r) {
+  if (r.concluida) return '<b>Oferta concluída</b>';
+  if (!r.atual) return '—';
+  const n = ETAPAS[ETAPAS.indexOf(r.atual) + 1];
+  return n ? `<b>${n.num} · ${esc(n.nome)}</b>` : '<b>Esta é a última etapa</b>';
+}
+
+/* ---------- Armazenamento ---------- */
+const docs = s => s.docs.map(d => ({ ...clone(d.data()), id: d.id }));
+function adapterClaude(db) {
+  return {
+    watchOfertas: (ok, err) => db.collection('ofertas').onSnapshot(s => ok(docs(s)), err),
+    watchModelos: ok => db.doc('config/modelos').onSnapshot(s => ok(s.exists ? s.data() : null), () => ok(null)),
+    patch: (id, p) => db.doc('ofertas/' + id).update(p),
+    put: (id, b) => db.doc('ofertas/' + id).set(b),
+    del: id => db.doc('ofertas/' + id).delete(),
+    putModelos: b => db.doc('config/modelos').set(b)
+  };
+}
+function adapterFirebase(fs, uid) {
+  const base = fs.collection('users').doc(uid);
+  return {
+    watchOfertas: (ok, err) => base.collection('ofertas').onSnapshot(s => ok(docs(s)), err),
+    watchModelos: ok => base.collection('config').doc('modelos').onSnapshot(s => ok(s.exists ? s.data() : null), () => ok(null)),
+    patch: (id, p) => base.collection('ofertas').doc(id).set(p, { merge: true }),
+    put: (id, b) => base.collection('ofertas').doc(id).set(b),
+    del: id => base.collection('ofertas').doc(id).delete(),
+    putModelos: b => base.collection('config').doc('modelos').set(b)
+  };
+}
+function saveLocal() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify({ ofertas, modelos })); }
+  catch { toast('Não foi possível salvar neste navegador.'); }
+}
+function enqueue(id, fn) {
+  inflight++;
+  chains[id] = (chains[id] || Promise.resolve()).then(fn).catch(err => {
+    toast(err && err.code === 'quota_exceeded' ? 'Limite de armazenamento atingido. Exclua ofertas antigas.' : 'Não foi possível salvar. Verifique a conexão e tente de novo.');
+  }).finally(() => { inflight--; });
+}
+function patchOferta(id, patch, delay = 0) {
+  const o = ofertas.find(x => x.id === id); if (o) merge(o, patch);
+  if (mode === 'local') { saveLocal(); return; }
+  pend[id] = merge(pend[id] || {}, patch);
+  clearTimeout(timers[id]);
+  if (delay) timers[id] = setTimeout(() => flush(id), delay); else flush(id);
+}
+function flush(id) {
+  clearTimeout(timers[id]);
+  const p = pend[id]; if (!p) return; delete pend[id];
+  enqueue(id, () => S.patch(id, clone(p)));
+}
+const flushAll = () => Object.keys(pend).forEach(flush);
+function gravarInteira(o) {
+  if (mode === 'local') { saveLocal(); return; }
+  delete pend[o.id]; clearTimeout(timers[o.id]);
+  const { id, ...body } = clone(o);
+  enqueue(id, () => S.put(id, body));
+}
+function excluirOferta(id) {
+  ofertas = ofertas.filter(o => o.id !== id);
+  delete pend[id]; clearTimeout(timers[id]);
+  if (mode === 'local') saveLocal(); else enqueue(id, () => S.del(id));
+}
+function salvarModelos(novos) {
+  modelos = clone(novos);
+  if (mode === 'local') { saveLocal(); return; }
+  enqueue('config', () => S.putModelos({ listas: clone(novos), atualizadoEm: new Date().toISOString() }));
+}
+
+/* ---------- Ações ---------- */
+function nomeUnico(base) {
+  const nomes = new Set(ofertas.map(o => o.nome.trim().toLowerCase()));
+  if (!nomes.has(base.toLowerCase())) return base;
+  for (let i = 2; ; i++) if (!nomes.has(`${base} ${i}`.toLowerCase())) return `${base} ${i}`;
+}
+function criarOferta({ nome, origem: org, link, obs, ticket, checkout, pagina }) {
+  const etapas = {};
+  for (const e of ETAPAS) {
+    const ts = {};
+    listaPara(e.key, org).forEach((m, i) => { ts['t' + (i + 1)] = { t: m.t, ev: m.ev || '', como: m.como || '', ordem: i + 1, feito: false, link: '', nota: '' }; });
+    etapas[e.key] = ts;
+  }
+  const o = { id: novoId(), nome, origem: org, rota: ROTA[org], link: link || '', obs: obs || '', ticket: ticket ?? null, checkout: checkout || '', pagina: pagina || '',
+    ficha: {}, bonus: {}, bumps: {}, gerados: {}, arquivada: false, criadoEm: new Date().toISOString(), etapas };
+  ofertas.push(o); gravarInteira(o); return o;
+}
+function duplicarOferta(o) {
+  const c = clone(o);
+  c.id = novoId(); c.nome = nomeUnico(o.nome + ' (variação)'); c.criadoEm = new Date().toISOString();
+  c.arquivada = false; c.pagina = ''; c.gerados = {};
+  for (const ek in c.etapas || {}) for (const tid in c.etapas[ek]) Object.assign(c.etapas[ek][tid], { feito: false, feitoEm: '', link: '', nota: '' });
+  ofertas.push(c); gravarInteira(c); return c;
+}
+
+/* ---------- Gerador de copy ---------- */
+const linhas = s => String(s || '').split('\n').map(x => x.trim()).filter(Boolean);
+function contexto(o) {
+  const f = o.ficha || {};
+  const L2 = (t, v) => v ? `${t}: ${v}` : '';
+  const LL = (t, v) => linhas(v).length ? `${t}:\n${linhas(v).map(x => '- ' + x).join('\n')}` : '';
+  const bonus = itensDe(o.bonus).filter(b => b.nome);
+  const bumps = itensDe(o.bumps).filter(b => b.nome);
+  return [
+    `Produto: ${o.nome}`,
+    L2('Formato do entregável', f.formato),
+    typeof o.ticket === 'number' ? `Preço (ticket): ${fmtValor(o.ticket)}` : '',
+    L2('Público-alvo', f.publico), L2('Dor principal', f.dor), L2('Promessa / transformação', f.promessa), L2('Mecanismo único', f.mecanismo),
+    LL('Vantagens da oferta', f.vantagens),
+    LL('Comentários reais do público (use o vocabulário deles)', f.comentarios),
+    LL('Objeções a quebrar', f.objecoes),
+    bonus.length ? 'Bônus:\n' + bonus.map(b => `- ${b.nome}${b.desc ? ': ' + b.desc : ''}`).join('\n') : '',
+    bumps.length ? 'Order bumps:\n' + bumps.map(b => `- ${b.nome}${typeof b.preco === 'number' ? ' (' + fmtValor(b.preco) + ')' : ''}`).join('\n') : ''
+  ].filter(Boolean).join('\n');
+}
+const GERADORES = [
+  { k: 'entregavel', etapa: 'e3', icon: I.book, titulo: 'Conteúdo do entregável', desc: 'Sumário e estrutura do produto principal, dos bônus e dos order bumps.',
+    precisa: ['formato', 'publico', 'dor', 'promessa'],
+    prompt: o => `Você é especialista em criar infoprodutos low ticket (R$ 10 a R$ 50) para o mercado brasileiro.\n\nPlaneje o conteúdo do produto abaixo:\n1. Título e subtítulo do entregável principal.\n2. Texto de capa e de contracapa.\n3. Sumário completo, com o que cada seção ou página entrega na prática.\n4. Para cada bônus e order bump: estrutura resumida e o que entrega.\n5. Sugestões de elementos visuais (tabelas, mapas, checklists) que deixam o material fácil de usar.\n\nLinguagem simples e direta. O conteúdo precisa cumprir a promessa sem exageros.\n\n--- DADOS DA OFERTA ---\n${contexto(o)}` },
+  { k: 'copy', etapa: 'e4', icon: I.page, titulo: 'Copy da página de vendas', desc: 'Página completa, pensada para celular, no vocabulário do seu público.',
+    precisa: ['publico', 'dor', 'promessa', 'mecanismo', 'vantagens', 'objecoes'],
+    prompt: o => `Você é copywriter de produtos digitais low ticket no Brasil.\n\nEscreva a copy completa de uma página de vendas mobile-first para o produto abaixo, nesta ordem:\n1. Headline e subheadline (3 opções de cada).\n2. Bloco de dor: a situação atual do público, com as palavras dos comentários reais.\n3. Apresentação do produto e do mecanismo único.\n4. "Tudo o que você vai receber": entregável, bônus e valor percebido de cada item.\n5. Para quem é e para quem não é.\n6. Espaço para provas e depoimentos (use [DEPOIMENTO] como marcador; não invente depoimentos).\n7. Oferta com ancoragem de preço e o ticket.\n8. Garantia de 7 dias.\n9. FAQ respondendo às objeções.\n10. Textos curtos para os botões de compra.\n\nPromessas honestas: nada de garantia de resultado. Frases curtas, fáceis de ler no celular.\n\n--- DADOS DA OFERTA ---\n${contexto(o)}` },
+  { k: 'ganchos', etapa: 'e5', icon: I.hook, titulo: 'Ganchos para criativos', desc: '15 ganchos textuais e visuais com ângulos variados para testar.',
+    precisa: ['publico', 'dor', 'promessa', 'comentarios'],
+    prompt: o => `Você é estrategista de anúncios para infoprodutos low ticket no Meta Ads.\n\nCrie 15 ganchos para anúncios do produto abaixo. Para cada um, entregue:\n- Gancho textual: até 10 palavras, para os 3 primeiros segundos.\n- Gancho visual: o que aparece na tela (de preferência o entregável impresso sendo folheado ou usado).\n- Ângulo: dor, desejo, curiosidade, prova, objeção ou novidade.\n\nVarie os ângulos e use o vocabulário dos comentários reais. Nada de promessas exageradas.\n\n--- DADOS DA OFERTA ---\n${contexto(o)}` },
+  { k: 'roteiro', etapa: 'e5', icon: I.film, titulo: 'Roteiros de vídeo demonstrativo', desc: '3 roteiros de 20 a 40 segundos com takes do entregável e narração.',
+    precisa: ['publico', 'dor', 'promessa', 'formato'],
+    prompt: o => `Você é roteirista de criativos de vídeo para infoprodutos low ticket.\n\nEscreva 3 roteiros de vídeo demonstrativo de 20 a 40 segundos para o produto abaixo. Regras:\n- Gancho forte nos 3 primeiros segundos (visual + texto).\n- Takes curtos mostrando as folhas impressas do entregável, intercalados com b-roll.\n- Narração humanizada, em tom de conversa, pronta para gerar no ElevenLabs.\n- Legendas curtas e chamada para ação no final.\n\nFormato: tabela com as colunas Tempo | Cena | Narração | Texto na tela.\n\n--- DADOS DA OFERTA ---\n${contexto(o)}` }
+];
+function copiar(texto, ok) {
+  const fallback = () => {
+    const ta = document.createElement('textarea'); ta.value = texto; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); let feito = false; try { feito = document.execCommand('copy'); } catch {}
+    ta.remove(); toast(feito ? ok : 'Não consegui copiar sozinho. Abra "Ver prompt" e copie o texto.');
+  };
+  try { navigator.clipboard.writeText(texto).then(() => toast(ok), fallback); } catch { fallback(); }
+}
+
+/* ---------- Render ---------- */
+function captureFocus() {
+  const a = document.activeElement;
+  if (!a || !a.id || !shell.contains(a)) return null;
+  return { id: a.id, s: a.selectionStart, e: a.selectionEnd };
+}
+function restoreFocus(f) {
+  if (!f) return; const el = document.getElementById(f.id); if (!el) return;
+  el.focus({ preventScroll: true });
+  try { if (f.s != null) el.setSelectionRange(f.s, f.e); } catch {}
+}
+const editando = () => { const a = document.activeElement; return a && shell.contains(a) && a.matches('input:not([type=checkbox]):not([type=radio]):not([type=file]),textarea'); };
+function scheduleRender() { if (editando()) { needRender = true; return; } render(); }
+shell.addEventListener('focusout', () => { if (needRender) setTimeout(() => { if (!editando() && needRender) { needRender = false; render(); } }, 0); });
+
+function render() {
+  const f = captureFocus();
+  for (const v of ['painel', 'modelos', 'backup']) document.getElementById('nav-' + v).toggleAttribute('aria-current', false);
+  if (view !== 'oferta' && document.getElementById('nav-' + view)) document.getElementById('nav-' + view).setAttribute('aria-current', 'page');
+  const conta = document.getElementById('conta');
+  conta.hidden = !contaEmail; conta.textContent = (contaEmail || '?')[0].toUpperCase(); conta.title = contaEmail ? `${contaEmail} · Sair` : '';
+  const comDados = mode === 'remote' || mode === 'local';
+  document.getElementById('nav-nova').hidden = !comDados;
+  shell.classList.toggle('solo', !comDados);
+  side.hidden = !comDados;
+  if (comDados) side.innerHTML = renderSide();
+  app.innerHTML = renderMain();
+  restoreFocus(f);
+}
+
+function renderMain() {
+  if (mode === 'loading') return `<div class="skel" style="height:80px"></div><div class="skel" style="height:240px"></div><p class="label" style="margin:0">Carregando suas ofertas…</p>`;
+  if (mode === 'setup') return `<div class="center"><div class="login"><h1>Falta configurar o Firebase</h1><p>Abra o arquivo <b>firebase-config.js</b>, cole as chaves do seu projeto Firebase e publique de novo. O passo a passo está no arquivo LEIA-ME.</p></div></div>`;
+  if (mode === 'login') return `<div class="center"><div class="login"><div class="logo" style="color:var(--ink);background:var(--lime);border-radius:50%;width:64px;height:64px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" style="width:36px;height:36px;stroke-width:3"><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/></svg></div><h1>Sistema de Execução Low Ticket</h1><p>Entre com a sua conta Google para ver suas ofertas em qualquer dispositivo.</p><button class="btn lime" data-act="entrar">Entrar com Google</button></div></div>`;
+  const banner = mode === 'local' ? `<div class="banner">Modo local: as ofertas ficam salvas só neste navegador.</div>` : '';
+  if (view === 'oferta') {
+    const o = ofertas.find(x => x.id === focoId);
+    return banner + (o ? renderOferta(o) : `<div class="empty"><h3>Oferta não encontrada</h3><p>Ela pode ter sido excluída.</p><button class="btn" data-act="nav" data-view="painel">Voltar ao painel</button></div>`);
+  }
+  if (view === 'modelos') return banner + renderModelos();
+  if (view === 'backup') return banner + renderBackup();
+  return banner + renderPainel();
+}
+
+function renderSide() {
+  const ativas = ofertas.filter(o => !o.arquivada);
+  const rs = ativas.map(resumo);
+  const tOk = rs.reduce((s, r) => s + r.ok, 0), tTot = rs.reduce((s, r) => s + r.tot, 0);
+  const tiles = `<div class="tiles">
+    <div class="tile"><span><i style="--c:var(--lime)"></i>Ofertas</span><strong>${ativas.length}</strong></div>
+    <div class="tile"><span><i style="--c:var(--coral)"></i>Em andamento</span><strong>${rs.filter(r => !r.concluida).length}</strong></div>
+    <div class="tile"><span><i style="--c:var(--sky)"></i>Concluídas</span><strong>${rs.filter(r => r.concluida).length}</strong></div>
+    <div class="tile"><span><i style="--c:var(--lav)"></i>Tarefas</span><strong>${tOk}<small>/${tTot}</small></strong></div></div>`;
+  const q = busca.trim().toLowerCase();
+  const lista = ofertas.map(o => ({ o, r: resumo(o) })).filter(({ o, r }) =>
+    (sideFiltro === 'arquivadas' ? o.arquivada : !o.arquivada && (sideFiltro === 'todas' || (sideFiltro === 'concluidas' ? r.concluida : !r.concluida))) &&
+    (!q || o.nome.toLowerCase().includes(q) || o.id.toLowerCase().includes(q)))
+    .sort((a, b) => String(b.o.criadoEm).localeCompare(String(a.o.criadoEm)));
+  const chip = (k, t) => `<button type="button" class="chip" data-act="sfiltro" data-f="${k}" aria-pressed="${sideFiltro === k}">${t}</button>`;
+  const cards = lista.map(({ o, r }) => {
+    const e = r.atual;
+    return `<button type="button" class="ocard" data-act="abrir" data-id="${esc(o.id)}" aria-current="${view === 'oferta' && focoId === o.id}">
+      <span class="arrow ico">${I.arrow}</span>
+      <b>${esc(o.nome)}</b>
+      <small>${esc(o.origem)}${typeof o.ticket === 'number' ? ' · ' + fmtValor(o.ticket) : ''}${o.checkout ? ' · ' + esc(o.checkout) : ''}</small>
+      <span class="row"><span class="ico">${I.doc}</span>${r.concluida ? 'Concluída' : e ? esc(e.nome) : 'Sem tarefas'}
+        <span class="tag" style="--c:${r.concluida ? 'var(--lime)' : e ? cv(e.cor) : 'var(--s1)'}">${pctTxt(r.pct)}</span></span>
+    </button>`;
+  }).join('');
+  return `${tiles}
+    <div class="list-head"><i></i>Ofertas<span class="n">${lista.length}</span></div>
+    <input class="side-search" id="busca" type="search" placeholder="Buscar por nome ou ID" value="${esc(busca)}" aria-label="Buscar oferta">
+    <div class="chips">${chip('andamento', 'Em andamento')}${chip('concluidas', 'Concluídas')}${chip('todas', 'Todas')}${chip('arquivadas', 'Arquivadas')}</div>
+    <div class="olist">${cards || `<div class="side-empty">${ofertas.length ? 'Nenhuma oferta neste filtro.' : 'Nenhuma oferta ainda.'}</div>`}</div>`;
+}
+
+function renderPainel() {
+  const rs = ofertas.filter(o => !o.arquivada).map(o => ({ o, r: resumo(o) }));
+  const head = `<div class="head"><div><h1>Painel</h1><p>Onde cada oferta está no método das 5 etapas.</p></div><button class="btn lime" data-act="nova"><span class="ico">${I.plus}</span>Nova oferta</button></div>`;
+  if (!rs.length) return head + `<div class="empty"><h3>Nenhuma oferta ativa</h3><p>Cadastre o nome e a origem (Mineração ou Concepção). O sistema gera na hora o checklist das etapas 02 a 05.</p><button class="btn lime" data-act="nova">Cadastrar oferta</button></div>`;
+  const cols = [...ETAPAS.map(e => ({ key: e.key, nome: e.num + ' · ' + e.nome, cor: e.cor })), { key: 'ok', nome: 'Concluídas', cor: '--lime' }];
+  const board = cols.map(c => {
+    const itens = rs.filter(x => c.key === 'ok' ? x.r.concluida : x.r.atual && x.r.atual.key === c.key).sort((a, b) => b.r.pct - a.r.pct);
+    const cards = itens.map(({ o, r }) => {
+      const pe = r.atual ? r.por[r.atual.key] : null;
+      return `<button type="button" class="bcard" style="--c:${cv(c.cor)}" data-act="abrir" data-id="${esc(o.id)}">
+        <b>${esc(o.nome)}</b>
+        <div class="bar"><i style="width:${pe ? Math.round(pe.ok / pe.tot * 100) : 100}%"></i></div>
+        <span class="meta"><span>${typeof o.ticket === 'number' ? fmtValor(o.ticket) : esc(o.id)}</span><span>${pctTxt(r.pct)}</span></span></button>`;
+    }).join('');
+    return `<div class="col"><div class="col-head"><span class="dot" style="--c:${cv(c.cor)}"></span>${esc(c.nome)}<span class="n">${itens.length}</span></div>${cards || '<div class="col-empty">Nenhuma oferta aqui</div>'}</div>`;
+  }).join('');
+  const rows = rs.sort((a, b) => String(b.o.criadoEm).localeCompare(String(a.o.criadoEm))).map(({ o, r }) => `<tr data-act="abrir" data-id="${esc(o.id)}">
+      <td><div style="display:grid;gap:2px"><b style="font-weight:600">${esc(o.nome)}</b><span class="idchip">${esc(o.id)}</span></div></td>
+      <td>${esc(o.origem)}</td>
+      <td class="num">${fmtValor(o.ticket)}</td>
+      <td>${o.checkout ? esc(o.checkout) : '<span style="color:var(--muted)">—</span>'}</td>
+      <td>${r.concluida ? '<span class="tag" style="--c:var(--lime)">Concluída</span>' : r.atual ? tagEtapa(r.atual) : '—'}</td>
+      <td class="num"><div style="display:grid;gap:4px;min-width:90px">${pctTxt(r.pct)}<div class="bar"><i style="width:${Math.round(r.pct * 100)}%"></i></div></div></td>
+      <td>${urlOk(o.pagina) ? `<a href="${esc(o.pagina)}" target="_blank" rel="noopener" data-act="link" class="mini">Abrir ↗</a>` : '<span style="color:var(--muted)">—</span>'}</td>
+      <td class="num">${fmtData(o.criadoEm)}</td></tr>`).join('');
+  return head + `
+  <section><div class="sec-title"><h2>Pipeline</h2><p>Cada oferta aparece na primeira etapa que ainda tem tarefa pendente.</p></div>
+    <div class="board-scroll"><div class="board">${board}</div></div></section>
+  <section><div class="sec-title"><h2>Todas as ofertas ativas</h2></div>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Produto</th><th>Origem</th><th>Ticket</th><th>Checkout</th><th>Etapa atual</th><th>Progresso</th><th>Página</th><th>Cadastro</th></tr></thead>
+      <tbody>${rows}</tbody></table></div></section>`;
+}
+
+function renderOferta(o) {
+  const r = resumo(o);
+  const atualKey = r.concluida ? null : r.atual && r.atual.key;
+  const tags = `${o.arquivada ? '<span class="tag soft">Arquivada</span>' : ''}${r.concluida ? '<span class="tag" style="--c:var(--lime)">Concluída</span>' : r.atual ? tagEtapa(r.atual) : ''}<span class="tag" style="--c:var(--surface-2);color:var(--fg)">${esc(o.origem)} · ${esc(o.rota || ROTA[o.origem] || '')}</span>`;
+  const head = `<div class="o-head">
+    <div>
+      <input class="o-name" id="f-nome" data-path="nome" value="${esc(o.nome)}" aria-label="Nome da oferta">
+      <div class="o-meta"><span class="idchip">${esc(o.id)}</span><span>Ticket <b>${fmtValor(o.ticket)}</b></span><span>Checkout <b>${o.checkout ? esc(o.checkout) : '—'}</b></span><span>Cadastrada em ${fmtData(o.criadoEm)}</span></div>
+      <div class="o-actions">
+        <a class="round ico" ${urlOk(o.pagina) ? `href="${esc(o.pagina)}" target="_blank" rel="noopener"` : 'aria-disabled="true"'} title="Abrir página de vendas" aria-label="Abrir página de vendas">${I.page}</a>
+        <a class="round ico" ${urlOk(o.link) ? `href="${esc(o.link)}" target="_blank" rel="noopener"` : 'aria-disabled="true"'} title="Abrir pasta" aria-label="Abrir pasta">${I.folder}</a>
+        <button type="button" class="round ico" data-act="duplicar" title="Duplicar oferta" aria-label="Duplicar oferta">${I.copy}</button>
+        <button type="button" class="round ico" data-act="arquivar" title="${o.arquivada ? 'Desarquivar' : 'Arquivar'}" aria-label="${o.arquivada ? 'Desarquivar' : 'Arquivar'}">${I.archive}</button>
+      </div>
+    </div>
+    <div class="o-tags">${tags}</div>
+  </div>`;
+  const tab = (k, t) => `<button type="button" class="tab" role="tab" data-act="aba" data-aba="${k}" aria-selected="${aba === k}">${t}</button>`;
+  const tabs = `<div class="tabs" role="tablist">${tab('checklist', 'Checklist')}${tab('ficha', 'Ficha da oferta')}${tab('gerador', 'Gerador de copy')}${tab('dados', 'Dados')}</div>`;
+  const steps = [ETAPA1, ...ETAPAS].map(e => {
+    const p = e.key === 'e1' ? { ok: 1, tot: 1 } : r.por[e.key];
+    const done = p.tot > 0 && p.ok === p.tot;
+    return `<button type="button" class="stp ${done ? 'done' : ''} ${e.key === atualKey ? 'cur' : ''}" ${e.key !== 'e1' ? `data-act="ir-etapa" data-k="${e.key}"` : 'disabled'}>
+      <i>${done ? I.check : ''}</i><span>${e.num} · ${esc(e.nome)}</span><small>${e.key === 'e1' ? '' : p.ok + '/' + p.tot}</small></button>`;
+  }).join('');
+  const bumps = itensDe(o.bumps).filter(b => typeof b.preco === 'number');
+  const potencial = (typeof o.ticket === 'number' ? o.ticket : 0) + bumps.reduce((s, b) => s + b.preco, 0);
+  const right = `<div class="o-right">
+    <div class="lavcard"><span class="label">Progresso geral</span><div class="big">${pctTxt(r.pct)}</div>
+      <span style="font-size:14px">${r.ok} de ${r.tot} tarefas concluídas</span><div class="steps">${steps}</div></div>
+    <div class="limecard"><span class="label">Etapa atual</span>
+      <div class="whitebox">${r.concluida ? '<b>Oferta concluída</b>' : r.atual ? `<b>${r.atual.num} · ${esc(r.atual.nome)}</b>` : '—'}</div>
+      <span class="label">Próxima etapa</span><div class="whitebox">${proximaEtapa(r)}</div>
+      ${potencial ? `<span class="label">Ticket com todos os bumps</span><div class="whitebox"><b>${fmtValor(potencial)}</b></div>` : ''}
+    </div></div>`;
+  let corpo = '';
+  if (aba === 'ficha') corpo = renderFicha(o, potencial);
+  else if (aba === 'gerador') corpo = renderGerador(o);
+  else if (aba === 'dados') corpo = renderDados(o);
+  else corpo = renderChecklist(o, r, atualKey);
+  return `<button type="button" class="mini" data-act="nav" data-view="painel" style="justify-self:start;padding-left:0">← Painel</button>
+    ${head}${tabs}<div class="o-grid"><div class="o-col">${corpo}</div>${right}</div>`;
+}
+
+function renderChecklist(o, r, atualKey) {
+  return ETAPAS.map(e => {
+    const ts = tarefasDe(o, e.key); const p = r.por[e.key];
+    const k = o.id + e.key;
+    const open = k in abertas ? abertas[k] : e.key === atualKey;
+    const items = ts.map(t => {
+      const isNext = r.prox && r.prox.id === t.id && e.key === atualKey;
+      const did = o.id + e.key + t.id;
+      const det = detalhes.has(did) || t.link || t.nota;
+      return `<div class="task ${t.feito ? 'done' : ''}">
+        <input type="checkbox" class="check" id="c-${esc(did)}" data-check data-e="${e.key}" data-t="${esc(t.id)}" ${t.feito ? 'checked' : ''} aria-label="Concluir: ${esc(t.t)}">
+        <div class="ttext">
+          <span>${esc(t.t)}${isNext ? '<span class="nextbadge">Próxima</span>' : ''}</span>
+          ${t.ev ? `<small><b>Entrega:</b> ${esc(t.ev)}</small>` : ''}
+          ${t.como ? `<small><b>Como fazer:</b> ${esc(t.como)}</small>` : ''}
+          ${det ? `<div class="tdet">
+            <input class="inp" id="l-${esc(did)}" type="url" placeholder="Link / registro" value="${esc(t.link)}" data-path="etapas.${e.key}.${esc(t.id)}.link" aria-label="Link ou registro">
+            <input class="inp" id="n-${esc(did)}" type="text" placeholder="Anotação ou evidência" value="${esc(t.nota)}" data-path="etapas.${e.key}.${esc(t.id)}.nota" aria-label="Anotação"></div>` : ''}
+        </div>
+        <div style="display:flex">
+          ${urlOk(t.link) ? `<a class="mini" href="${esc(t.link)}" target="_blank" rel="noopener">Abrir</a>` : ''}
+          ${!det ? `<button type="button" class="mini" data-act="det" data-d="${esc(did)}">+ Registro</button>` : ''}
+          ${t.extra ? `<button type="button" class="mini" data-act="rm-extra" data-e="${e.key}" data-t="${esc(t.id)}">Remover</button>` : ''}
+        </div></div>`;
+    }).join('');
+    return `<details class="stage" id="st-${e.key}" style="--c:${cv(e.cor)}" data-k="${esc(k)}" ${open ? 'open' : ''}>
+      <summary><span class="snum">${e.num}</span><div><h3>${esc(e.titulo)}</h3><small>${esc(e.desc)}</small></div>
+        <span class="scount">${p.ok}/${p.tot}<span class="bar"><i style="width:${p.tot ? Math.round(p.ok / p.tot * 100) : 0}%"></i></span><span class="chev" aria-hidden="true">›</span></span></summary>
+      <div class="sbody">
+        <div class="sinfo"><p>${esc(e.foco)}</p><p><b>Referências:</b> ${esc(e.refs)}</p></div>
+        ${items || '<p style="color:var(--muted);margin:8px 0">Nenhuma tarefa nesta etapa.</p>'}
+        <form class="add-row" data-form="extra" data-e="${e.key}">
+          <input class="inp" id="x-${e.key}" placeholder="Adicionar tarefa extra só nesta oferta" aria-label="Nova tarefa extra">
+          <button class="btn sm" type="submit">Adicionar</button></form>
+      </div></details>`;
+  }).join('');
+}
+
+function renderFicha(o, potencial) {
+  const f = o.ficha || {};
+  const campo = c => `<label class="field" ${c.area ? '' : ''}><span class="label">${esc(c.t)}</span>${c.area
+    ? `<textarea id="fi-${c.k}" data-path="ficha.${c.k}" rows="3" placeholder="${esc(c.ph)}">${esc(f[c.k])}</textarea>`
+    : `<input id="fi-${c.k}" data-path="ficha.${c.k}" value="${esc(f[c.k])}" placeholder="${esc(c.ph)}">`}</label>`;
+  const bonus = itensDe(o.bonus).map(b => `<div class="lrow">
+      <input class="inp" id="bo-${esc(b.id)}-n" data-path="bonus.${esc(b.id)}.nome" value="${esc(b.nome)}" placeholder="Nome do bônus" aria-label="Nome do bônus">
+      <input class="inp" id="bo-${esc(b.id)}-d" data-path="bonus.${esc(b.id)}.desc" value="${esc(b.desc)}" placeholder="O que entrega" aria-label="Descrição do bônus">
+      <button type="button" class="mini" data-act="rm-item" data-lista="bonus" data-id="${esc(b.id)}">Remover</button></div>`).join('');
+  const bumps = itensDe(o.bumps).map(b => `<div class="lrow bump">
+      <input class="inp" id="bu-${esc(b.id)}-n" data-path="bumps.${esc(b.id)}.nome" value="${esc(b.nome)}" placeholder="Nome do order bump" aria-label="Nome do order bump">
+      <span class="money"><input class="inp" id="bu-${esc(b.id)}-p" data-path="bumps.${esc(b.id)}.preco" data-num inputmode="decimal" value="${esc(fmtEdit(b.preco))}" placeholder="0,00" aria-label="Preço do order bump"></span>
+      <button type="button" class="mini" data-act="rm-item" data-lista="bumps" data-id="${esc(b.id)}">Remover</button></div>`).join('');
+  return `<div class="card"><h3>Ficha da oferta</h3><p class="hint">A pesquisa da etapa 02 em um só lugar. Ela alimenta o gerador de copy.</p>
+      <div class="grid2">${FICHA.map(campo).join('')}</div></div>
+    <div class="card"><h3>Estrutura da oferta</h3><p class="hint">Produto principal, bônus e order bumps.</p>
+      <div style="display:grid;gap:16px">
+        <div class="grid2">
+          <label class="field"><span class="label">Produto principal</span><input id="fi-entregavel" data-path="ficha.entregavel" value="${esc((o.ficha || {}).entregavel)}" placeholder="Nome do entregável principal"></label>
+          <label class="field"><span class="label">Ticket</span><span class="money"><input id="fi-ticket" data-path="ticket" data-num inputmode="decimal" value="${esc(fmtEdit(o.ticket))}" placeholder="0,00"></span></label>
+        </div>
+        <div class="field"><span class="label">Bônus</span><div class="rows">${bonus || '<span style="color:var(--muted);font-size:14px">Nenhum bônus ainda.</span>'}</div>
+          <div><button type="button" class="btn sm" data-act="add-item" data-lista="bonus">+ Adicionar bônus</button></div></div>
+        <div class="field"><span class="label">Order bumps</span><div class="rows">${bumps || '<span style="color:var(--muted);font-size:14px">Nenhum order bump ainda.</span>'}</div>
+          <div><button type="button" class="btn sm" data-act="add-item" data-lista="bumps">+ Adicionar order bump</button></div></div>
+        <div class="sum"><span>Ticket <b>${fmtValor(o.ticket)}</b></span><span>Bumps <b>${fmtValor(itensDe(o.bumps).reduce((s, b) => s + (typeof b.preco === 'number' ? b.preco : 0), 0))}</b></span><span>Comprando tudo <b>${fmtValor(potencial)}</b></span></div>
+      </div></div>`;
+}
+
+function renderGerador(o) {
+  const f = o.ficha || {};
+  return `<div class="card" style="padding:16px 20px"><p style="margin:0;color:var(--muted);font-size:14px">Cada botão monta um prompt com os dados da Ficha. Copie, cole no ChatGPT ou no Claude e guarde o resultado aqui embaixo para não perder.</p></div>` +
+  GERADORES.map(g => {
+    const e = ETAPA_POR[g.etapa];
+    const faltam = g.precisa.filter(k => !String(f[k] || '').trim()).map(k => FICHA_NOME[k]);
+    const prompt = g.prompt(o);
+    return `<div class="gen" style="--c:${cv(e.cor)}">
+      <div class="gen-head"><span class="round ico">${g.icon}</span><div><h3>${esc(g.titulo)}</h3><p>${esc(g.desc)} · Etapa ${e.num}</p></div></div>
+      ${faltam.length ? `<div class="warn">Preencha na Ficha para um resultado melhor: ${esc(faltam.join(', '))}.</div>` : ''}
+      <div class="gen-acts">
+        <button type="button" class="btn dark sm" data-act="copiar-prompt" data-g="${g.k}"><span class="ico">${I.copy}</span>Copiar prompt</button>
+        <a class="btn sm" href="https://chatgpt.com/" target="_blank" rel="noopener">Abrir ChatGPT ↗</a>
+        <a class="btn sm" href="https://claude.ai/new" target="_blank" rel="noopener">Abrir Claude ↗</a>
+      </div>
+      <details><summary>Ver prompt</summary><pre>${esc(prompt)}</pre></details>
+      <label class="field"><span class="label">Resultado salvo</span>
+        <textarea id="ge-${g.k}" data-path="gerados.${g.k}" rows="4" placeholder="Cole aqui a resposta da IA para guardar junto da oferta">${esc((o.gerados || {})[g.k])}</textarea></label>
+    </div>`;
+  }).join('');
+}
+
+function renderDados(o) {
+  return `<div class="card"><h3>Dados da oferta</h3><p class="hint">Links e informações de venda.</p>
+      <div style="display:grid;gap:14px">
+        <div class="grid3">
+          <label class="field"><span class="label">Ticket</span><span class="money"><input id="f-ticket" data-path="ticket" data-num inputmode="decimal" value="${esc(fmtEdit(o.ticket))}" placeholder="0,00"></span></label>
+          <label class="field"><span class="label">Plataforma de checkout</span><select id="f-checkout" data-path="checkout">${optsPlataforma(o.checkout)}</select></label>
+          <label class="field"><span class="label">Página de vendas</span><input id="f-pagina" type="url" data-path="pagina" value="${esc(o.pagina)}" placeholder="https://…"></label>
+        </div>
+        <div class="grid2">
+          <label class="field"><span class="label">Pasta / link</span><input id="f-link" type="url" data-path="link" value="${esc(o.link)}" placeholder="https://drive.google.com/…"></label>
+          <label class="field"><span class="label">Observações</span><textarea id="f-obs" data-path="obs" rows="2" placeholder="Nicho, ideias, pendências…">${esc(o.obs)}</textarea></label>
+        </div>
+      </div></div>
+    <div class="danger-zone">${confirmDel
+      ? `<span>Excluir “${esc(o.nome)}” e todo o checklist? Não dá para desfazer.</span><button class="btn danger solid sm" data-act="excluir-sim">Excluir de vez</button><button class="btn sm" data-act="excluir-nao">Cancelar</button>`
+      : `<button class="btn danger sm" data-act="excluir">Excluir oferta</button><span>Prefira arquivar: a oferta sai das listas sem perder nada.</span>`}</div>`;
+}
+
+function renderModelos() {
+  if (!draft) draft = clone(modelos);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(modelos);
+  const blocos = LISTAS.map(l => {
+    const e = ETAPA_POR[l.etapa];
+    const rows = (draft[l.k] || []).map((m, i, arr) => `<div class="tpl-row">
+      <span class="ord">${i + 1}</span>
+      <textarea class="inp" id="m-${l.k}-${i}-t" data-m="${l.k}" data-i="${i}" data-mf="t" rows="2" aria-label="Tarefa">${esc(m.t)}</textarea>
+      <textarea class="inp" id="m-${l.k}-${i}-ev" data-m="${l.k}" data-i="${i}" data-mf="ev" rows="2" placeholder="Entrega / evidência" aria-label="Entrega">${esc(m.ev)}</textarea>
+      <textarea class="inp" id="m-${l.k}-${i}-como" data-m="${l.k}" data-i="${i}" data-mf="como" rows="2" placeholder="Como fazer · referências" aria-label="Como fazer">${esc(m.como)}</textarea>
+      <span class="acts">
+        <button type="button" class="mini" data-act="m-up" data-m="${l.k}" data-i="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Subir">↑</button>
+        <button type="button" class="mini" data-act="m-down" data-m="${l.k}" data-i="${i}" ${i === arr.length - 1 ? 'disabled' : ''} aria-label="Descer">↓</button>
+        <button type="button" class="mini" data-act="m-rm" data-m="${l.k}" data-i="${i}" aria-label="Remover">✕</button></span></div>`).join('');
+    return `<div class="tpl"><div class="tpl-head"><span class="snum" style="--c:${cv(e.cor)};width:30px;height:30px;font-size:12px">${e.num}</span><h3>${esc(l.rotulo)}</h3><span class="tag soft">${(draft[l.k] || []).length} tarefas</span><p>${esc(l.ajuda)}</p></div>
+      <div class="tpl-cols"><span></span><span class="label">Tarefa do checklist</span><span class="label">Entrega / evidência</span><span class="label">Como fazer</span><span></span></div>
+      ${rows}<div><button type="button" class="btn sm" data-act="m-add" data-m="${l.k}">+ Adicionar tarefa</button></div></div>`;
+  }).join('');
+  return `<div class="head"><div><h1>Modelos de tarefas</h1><p>Seu método autoral. Novas tarefas valem para as próximas ofertas. "Entrega" e "Como fazer" também são aplicados às ofertas existentes que têm a mesma tarefa.</p></div></div>
+    <div style="display:grid;gap:14px">${blocos}</div>
+    ${dirty ? `<div class="savebar"><span>Alterações não salvas nos modelos</span><button class="btn sm" data-act="m-descartar">Descartar</button><button class="btn lime sm" data-act="m-salvar">Salvar modelos</button></div>`
+            : `<div class="danger-zone"><button class="btn sm" data-act="m-padrao">Restaurar modelos originais da planilha</button></div>`}`;
+}
+
+function renderBackup() {
+  const podeBaixar = origem !== 'claude';
+  return `<div class="head"><div><h1>Backup</h1><p>Leve suas ofertas para outro lugar ou guarde uma cópia de segurança.</p></div></div>
+    <div class="grid2">
+      <div class="card" style="display:grid;gap:12px;align-content:start"><h3>Exportar</h3>
+        <p class="hint" style="margin:0">${ofertas.length} ofertas e seus modelos de tarefas, em um arquivo JSON.</p>
+        <div class="gen-acts">${podeBaixar ? `<button class="btn lime sm" data-act="exportar">Baixar backup</button>` : ''}<button class="btn sm" data-act="copiar-backup">Copiar backup</button></div></div>
+      <div class="card" style="display:grid;gap:12px;align-content:start"><h3>Importar</h3>
+        <p class="hint" style="margin:0">Escolha um arquivo de backup. Ofertas com o mesmo código são substituídas; as outras continuam como estão.</p>
+        <input type="file" id="arquivo-backup" accept=".json,application/json">
+        ${importPrev ? `<div class="sum"><span>${importPrev.ofertas.length} ofertas no arquivo</span><span>${importPrev.ofertas.filter(x => ofertas.some(o => o.id === x.id)).length} substituem ofertas existentes</span></div>
+          <div class="gen-acts"><button class="btn lime sm" data-act="importar">Importar agora</button><button class="btn sm" data-act="cancelar-import">Cancelar</button></div>` : ''}
+      </div></div>`;
+}
+
+/* ---------- Modal nova oferta ---------- */
+function abrirNova() {
+  document.getElementById('modal-root').innerHTML = `<div class="overlay" data-act="fechar-fundo"><form class="modal" id="form-nova" role="dialog" aria-modal="true" aria-labelledby="nova-t">
+    <h2 id="nova-t">Nova oferta</h2>
+    <p>O checklist das etapas 02 a 05 é gerado a partir dos seus modelos.</p>
+    <label class="field"><span class="label">Nome da oferta</span><input id="nv-nome" required maxlength="140" placeholder="Ex.: Mapa visual da reforma tributária"></label>
+    <div class="field"><span class="label">Origem</span><div class="radios">
+      <label class="radio"><input type="radio" name="origem" value="Mineração" checked><b>Mineração</b><small>Oferta minerada na biblioteca de anúncios · rota Modelagem</small></label>
+      <label class="radio"><input type="radio" name="origem" value="Concepção"><b>Concepção</b><small>Ideia própria pré-concebida · rota Refinamento</small></label></div></div>
+    <div class="grid3">
+      <label class="field"><span class="label">Ticket</span><span class="money"><input id="nv-ticket" inputmode="decimal" placeholder="0,00"></span></label>
+      <label class="field"><span class="label">Checkout</span><select id="nv-checkout">${optsPlataforma('')}</select></label>
+      <label class="field"><span class="label">Página de vendas</span><input id="nv-pagina" type="url" placeholder="https://…"></label></div>
+    <label class="field"><span class="label">Pasta / link (opcional)</span><input id="nv-link" type="url" placeholder="https://drive.google.com/…"></label>
+    <p id="nv-erro" style="color:var(--danger)" hidden></p>
+    <div class="modal-acts"><button type="button" class="btn" data-act="fechar-modal">Cancelar</button><button type="submit" class="btn lime">Gerar checklist</button></div>
+  </form></div>`;
+  setTimeout(() => { const n = document.getElementById('nv-nome'); if (n) n.focus(); }, 0);
+}
+const fecharModal = () => { document.getElementById('modal-root').innerHTML = ''; };
+let toastT;
+function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3800); }
+function irPara(v, id) {
+  flushAll();
+  if (v === 'oferta' && id !== focoId) { aba = 'checklist'; confirmDel = false; }
+  view = v; focoId = id || null;
+  if (v !== 'modelos') draft = null;
+  render(); app.scrollTo({ top: 0 }); window.scrollTo({ top: 0 });
+}
+const backupJson = () => JSON.stringify({ app: 'sistema-low-ticket', versao: 1, exportadoEm: new Date().toISOString(), modelos, ofertas }, null, 2);
+
+/* ---------- Eventos ---------- */
+document.addEventListener('click', ev => {
+  const el = ev.target.closest('[data-act]'); if (!el) return;
+  const act = el.dataset.act;
+  const o = ofertas.find(x => x.id === focoId);
+  switch (act) {
+    case 'nav':
+      if (view === 'modelos' && el.dataset.view !== 'modelos' && draft && JSON.stringify(draft) !== JSON.stringify(modelos)) { toast('Salve ou descarte as alterações dos modelos antes de sair.'); return; }
+      irPara(el.dataset.view); break;
+    case 'abrir': irPara('oferta', el.dataset.id); break;
+    case 'nova': abrirNova(); break;
+    case 'fechar-modal': fecharModal(); break;
+    case 'fechar-fundo': if (ev.target === el) fecharModal(); break;
+    case 'sfiltro': sideFiltro = el.dataset.f; render(); break;
+    case 'aba': aba = el.dataset.aba; confirmDel = false; render(); break;
+    case 'ir-etapa': { aba = 'checklist'; abertas[focoId + el.dataset.k] = true; render(); const s = document.getElementById('st-' + el.dataset.k); if (s) s.scrollIntoView({ behavior: 'smooth', block: 'start' }); break; }
+    case 'det': detalhes.add(el.dataset.d); render(); break;
+    case 'rm-extra': if (!o) return; delete o.etapas[el.dataset.e][el.dataset.t]; gravarInteira(o); render(); break;
+    case 'add-item': {
+      if (!o) return; const lista = el.dataset.lista; const n = itensDe(o[lista]);
+      const id = (lista === 'bonus' ? 'b' : 'u') + Date.now().toString(36);
+      patchOferta(o.id, { [lista]: { [id]: lista === 'bonus' ? { nome: '', desc: '', ordem: n.length + 1 } : { nome: '', preco: null, ordem: n.length + 1 } } });
+      render(); const inp = document.getElementById((lista === 'bonus' ? 'bo-' : 'bu-') + id + '-n'); if (inp) inp.focus(); break; }
+    case 'rm-item': if (!o) return; delete (o[el.dataset.lista] || {})[el.dataset.id]; gravarInteira(o); render(); break;
+    case 'copiar-prompt': { if (!o) return; const g = GERADORES.find(x => x.k === el.dataset.g); copiar(g.prompt(o), 'Prompt copiado. Cole no ChatGPT ou no Claude.'); break; }
+    case 'duplicar': { if (!o) return; const c = duplicarOferta(o); toast('Variação criada: ' + c.nome); irPara('oferta', c.id); break; }
+    case 'arquivar':
+      if (!o) return; patchOferta(o.id, { arquivada: !o.arquivada });
+      toast(o.arquivada ? 'Oferta arquivada. Ela fica no filtro Arquivadas.' : 'Oferta de volta às listas.'); render(); break;
+    case 'excluir': confirmDel = true; render(); break;
+    case 'excluir-nao': confirmDel = false; render(); break;
+    case 'excluir-sim': if (!o) return; excluirOferta(o.id); toast('Oferta excluída.'); irPara('painel'); break;
+    case 'm-add': draft[el.dataset.m].push({ t: '', ev: '', como: '' }); render();
+      { const t = document.getElementById(`m-${el.dataset.m}-${draft[el.dataset.m].length - 1}-t`); if (t) t.focus(); } break;
+    case 'm-rm': draft[el.dataset.m].splice(+el.dataset.i, 1); render(); break;
+    case 'm-up': case 'm-down': { const a = draft[el.dataset.m], i = +el.dataset.i, j = act === 'm-up' ? i - 1 : i + 1; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; render(); break; }
+    case 'm-descartar': draft = clone(modelos); render(); break;
+    case 'm-padrao': draft = clone(MODELOS_PADRAO); render(); break;
+    case 'm-salvar': {
+      const limpo = {}; for (const k in draft) limpo[k] = draft[k].filter(m => m.t.trim()).map(m => ({ t: m.t.trim(), ev: (m.ev || '').trim(), como: (m.como || '').trim() }));
+      salvarModelos(limpo); draft = clone(limpo);
+      let n = 0;
+      for (const of of ofertas) {
+        const patch = {};
+        for (const e of ETAPAS) for (const t of tarefasDe(of, e.key)) {
+          const m = listaPara(e.key, of.origem).find(x => x.t === t.t);
+          if (m && (m.ev !== (t.ev || '') || m.como !== (t.como || ''))) merge(patch, { etapas: { [e.key]: { [t.id]: { ev: m.ev, como: m.como } } } });
+        }
+        if (Object.keys(patch).length) { patchOferta(of.id, patch); n++; }
+      }
+      toast(n ? `Modelos salvos e aplicados a ${n} oferta(s).` : 'Modelos salvos.'); render(); break; }
+    case 'exportar': {
+      const url = URL.createObjectURL(new Blob([backupJson()], { type: 'application/json' }));
+      const a = document.createElement('a'); a.href = url; a.download = 'backup-low-ticket-' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000); break; }
+    case 'copiar-backup': copiar(backupJson(), 'Backup copiado.'); break;
+    case 'cancelar-import': importPrev = null; render(); break;
+    case 'importar': {
+      if (!importPrev) return;
+      for (const x of importPrev.ofertas) {
+        const { id, ...body } = clone(x); if (!id) continue;
+        const i = ofertas.findIndex(o2 => o2.id === id);
+        if (i >= 0) ofertas[i] = { ...body, id }; else ofertas.push({ ...body, id });
+        if (mode !== 'local') enqueue(id, () => S.put(id, body));
+      }
+      if (importPrev.modelos) salvarModelos(importPrev.modelos); else if (mode === 'local') saveLocal();
+      if (mode === 'local') saveLocal();
+      toast(importPrev.ofertas.length + ' ofertas importadas.'); importPrev = null; render(); break; }
+    case 'entrar': entrarGoogle(); break;
+    case 'sair': if (origem === 'firebase') { flushAll(); window.firebase.auth().signOut(); } break;
+  }
+});
+app.addEventListener('toggle', ev => { const d = ev.target; if (d.matches && d.matches('details.stage')) abertas[d.dataset.k] = d.open; }, true);
+app.addEventListener('change', ev => {
+  const el = ev.target;
+  if (el.matches('[data-check]')) {
+    const o = ofertas.find(x => x.id === focoId); if (!o) return;
+    patchOferta(o.id, { etapas: { [el.dataset.e]: { [el.dataset.t]: { feito: el.checked, feitoEm: el.checked ? new Date().toISOString() : '' } } } });
+    const depois = resumo(o); render();
+    if (el.checked && depois.concluida) toast('Oferta concluída! Todas as etapas finalizadas.');
+  } else if (el.matches('[data-path]')) {
+    if (focoId) flush(focoId);
+    if (el.matches('[data-num],select')) render();
+  } else if (el.id === 'arquivo-backup' && el.files[0]) {
+    el.files[0].text().then(txt => {
+      const d = JSON.parse(txt);
+      if (!d || !Array.isArray(d.ofertas)) throw new Error();
+      importPrev = { ofertas: d.ofertas.filter(x => x && x.id && x.nome), modelos: d.modelos || null }; render();
+    }).catch(() => toast('Arquivo inválido. Escolha um backup exportado por este sistema.'));
+  }
+});
+shell.addEventListener('input', ev => {
+  const el = ev.target;
+  if (el.id === 'busca') { busca = el.value; render(); return; }
+  if (el.matches('[data-path]') && focoId) {
+    const path = el.dataset.path;
+    if (path === 'nome' && !el.value.trim()) return;
+    let v = el.value;
+    if (el.hasAttribute('data-num')) { v = el.value.trim() ? parseValor(el.value) : null; if (el.value.trim() && v === null) return; }
+    patchOferta(focoId, pathPatch(path, v), el.tagName === 'SELECT' ? 0 : 700);
+  } else if (el.matches('[data-m]') && draft) {
+    const was = JSON.stringify(draft) !== JSON.stringify(modelos);
+    draft[el.dataset.m][+el.dataset.i][el.dataset.mf] = el.value;
+    if (!was) render();
+  }
+});
+document.addEventListener('submit', ev => {
+  ev.preventDefault();
+  const f = ev.target;
+  if (f.id === 'form-nova') {
+    const nome = document.getElementById('nv-nome').value.trim();
+    const org = f.querySelector('input[name=origem]:checked').value;
+    const erro = document.getElementById('nv-erro');
+    const falha = m => { erro.textContent = m; erro.hidden = false; };
+    if (!nome) return falha('Dê um nome à oferta.');
+    if (ofertas.some(o => o.nome.trim().toLowerCase() === nome.toLowerCase())) return falha('Já existe uma oferta com esse nome. Use um nome diferente.');
+    const tTxt = document.getElementById('nv-ticket').value.trim(); const ticket = parseValor(tTxt);
+    if (tTxt && ticket === null) return falha('Ticket inválido. Use só números, como 19,90.');
+    const o = criarOferta({ nome, origem: org, link: document.getElementById('nv-link').value.trim(), obs: '',
+      ticket, checkout: document.getElementById('nv-checkout').value, pagina: document.getElementById('nv-pagina').value.trim() });
+    fecharModal(); toast('Checklist gerado para ' + nome + '.'); irPara('oferta', o.id);
+  } else if (f.dataset.form === 'extra') {
+    const o = ofertas.find(x => x.id === focoId); const inp = f.querySelector('input');
+    const t = inp.value.trim(); if (!o || !t) return;
+    const ts = tarefasDe(o, f.dataset.e); const ordem = ts.length ? Math.max(...ts.map(x => x.ordem || 0)) + 1 : 1;
+    patchOferta(o.id, { etapas: { [f.dataset.e]: { ['x' + Date.now().toString(36)]: { t, ev: '', como: '', ordem, feito: false, link: '', nota: '', extra: true } } } });
+    inp.value = ''; render();
+  }
+});
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && document.querySelector('.overlay')) fecharModal(); });
+window.addEventListener('pagehide', flushAll);
+
+/* ---------- Início ---------- */
+let primeiro = true;
+function aplicarHash() {
+  if (!primeiro) return; primeiro = false;
+  const h = location.hash.slice(1);
+  if (/^LT-[0-9A-F]{8}$/i.test(h) && ofertas.some(o => o.id === h.toUpperCase())) { view = 'oferta'; focoId = h.toUpperCase(); }
+  else if (h === 'modelos' || h === 'backup') view = h;
+}
+function conectar() {
+  unsubs.forEach(u => { try { u(); } catch {} }); unsubs = [];
+  let okOfertas = false;
+  unsubs.push(S.watchModelos(d => { modelos = d && d.listas ? clone(d.listas) : clone(MODELOS_PADRAO); if (okOfertas) scheduleRender(); }));
+  unsubs.push(S.watchOfertas(lista => {
+    ofertas = lista;
+    for (const id in pend) { const o = ofertas.find(x => x.id === id); if (o) merge(o, pend[id]); }
+    okOfertas = true; mode = 'remote'; aplicarHash(); scheduleRender();
+  }, () => toast('Não foi possível carregar as ofertas. Recarregue a página.')));
+}
+function entrarGoogle() {
+  const auth = window.firebase.auth(); const prov = new window.firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(prov).catch(err => {
+    if (err && /popup/.test(err.code || '')) auth.signInWithRedirect(prov);
+    else toast('Não foi possível entrar. ' + (err && err.code === 'auth/unauthorized-domain' ? 'Autorize este domínio no Firebase (veja o LEIA-ME).' : 'Tente de novo.'));
+  });
+}
+async function iniciar() {
+  render();
+  const cfg = window.LT_FIREBASE;
+  if (cfg && window.firebase) {
+    origem = 'firebase';
+    if (!cfg.apiKey || /COLE/.test(cfg.apiKey)) { mode = 'setup'; render(); return; }
+    window.firebase.initializeApp(cfg);
+    const auth = window.firebase.auth();
+    auth.getRedirectResult().catch(() => {});
+    auth.onAuthStateChanged(u => {
+      if (!u) { unsubs.forEach(x => { try { x(); } catch {} }); unsubs = []; ofertas = []; contaEmail = ''; mode = 'login'; render(); return; }
+      contaEmail = u.email || ''; mode = 'loading'; render();
+      S = adapterFirebase(window.firebase.firestore(), u.uid); conectar();
+    });
+    return;
+  }
+  for (let i = 0; i < 15 && !(window.claude && window.claude.use); i++) await new Promise(r => setTimeout(r, 100));
+  let db = null;
+  try { if (window.claude && window.claude.use) db = await window.claude.use('db'); } catch {}
+  if (db) { origem = 'claude'; S = adapterClaude(db); conectar(); return; }
+  origem = 'local'; mode = 'local';
+  try { const s = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); if (s) { ofertas = s.ofertas || []; if (s.modelos) modelos = s.modelos; } } catch {}
+  aplicarHash(); render();
+}
+iniciar();
+})();
+</script>
+
+</body>
+</html>
