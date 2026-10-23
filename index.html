@@ -403,6 +403,7 @@ const DEV = [
   'Desenvolver uma ideia de produto mudando algum aspecto da oferta minerada (Nicho, público, dor, mecanismo e formato) ou refinar uma ideia pré-concebida.',
   'Pesquisar sobre a ideia do produto no youtube, google trends, reclame aqui, marketing places para ver se o produto soluciona uma dor latente.',
   'Registrar os melhores comentários para conhecermos a fundo o público. (Essa pesquisa de público será essencial para escrever a copy da página de vendas).',
+  'Preencher o checklist da oferta.',
   'Criar pontos de vantagens para nossa oferta (Se inspirar no mapa das vantagens - Mentoria O Processo).',
   'Preencher o documento da idéia modelada ou refinada. (Se inspirar no doc Obra de Arte 100k - Mentoria O Processo).'
 ];
@@ -501,6 +502,7 @@ let S = null;           // adaptador de armazenamento
 let unsubs = [];
 let ofertas = [];
 let modelos = clone(MODELOS_PADRAO);
+let modelosMigr = [];   // migrações já aplicadas aos modelos desta conta
 let view = 'painel';
 let focoId = null;
 let aba = 'checklist';
@@ -619,7 +621,7 @@ function excluirOferta(id) {
 function salvarModelos(novos) {
   modelos = clone(novos);
   if (mode === 'local') { saveLocal(); return; }
-  enqueue('config', () => S.putModelos({ listas: clone(novos), atualizadoEm: new Date().toISOString() }));
+  enqueue('config', () => S.putModelos({ listas: clone(novos), migracoes: modelosMigr, atualizadoEm: new Date().toISOString() }));
 }
 
 /* ---------- Ações ---------- */
@@ -636,7 +638,7 @@ function criarOferta({ nome, origem: org, link, obs, ticket, checkout, pagina })
     etapas[e.key] = ts;
   }
   const o = { id: novoId(), nome, origem: org, rota: ROTA[org], link: link || '', obs: obs || '', ticket: ticket ?? null, checkout: checkout || '', pagina: pagina || '',
-    ficha: {}, bonus: {}, bumps: {}, gerados: {}, arquivada: false, criadoEm: new Date().toISOString(), etapas };
+    ficha: {}, bonus: {}, bumps: {}, gerados: {}, arquivada: false, migracoes: MIGRACOES.map(x => x.id), criadoEm: new Date().toISOString(), etapas };
   ofertas.push(o); gravarInteira(o); return o;
 }
 function duplicarOferta(o) {
@@ -1333,16 +1335,42 @@ function aplicarHash() {
   if (/^LT-[0-9A-F]{8}$/i.test(h) && ofertas.some(o => o.id === h.toUpperCase())) { view = 'oferta'; focoId = h.toUpperCase(); }
   else if (h === 'modelos' || h === 'backup') view = h;
 }
+// Mudanças pontuais no método: aplicadas uma única vez aos modelos e a cada oferta (marcadas em "migracoes").
+const T_REGISTRAR = DEV[2];
+const T_CHECKLIST = 'Preencher o checklist da oferta.';
+const MIGRACOES = [
+  { id: 'chk-oferta',
+    modelos: m => {
+      for (const k of ['e2_Modelagem', 'e2_Refinamento']) {
+        const l = m[k]; if (!l || l.some(x => x.t === T_CHECKLIST)) continue;
+        const i = l.findIndex(x => x.t === T_REGISTRAR);
+        l.splice(i < 0 ? l.length : i + 1, 0, { t: T_CHECKLIST, ev: '', como: '' });
+      }
+    },
+    oferta: o => {
+      const ts = tarefasDe(o, 'e2');
+      if (!ts.length || ts.some(t => t.t === T_CHECKLIST)) return;
+      const i = ts.findIndex(t => t.t === T_REGISTRAR);
+      ts.splice(i < 0 ? ts.length : i + 1, 0, { id: 'chk', t: T_CHECKLIST, ev: '', como: '', feito: false, link: '', nota: '' });
+      ts.forEach(({ id, ...v }, j) => { o.etapas.e2[id] = { ...v, ordem: j + 1 }; });
+    } }
+];
 function migrarTudo() {
   const m = clone(modelos);
-  if (migrarModelos(m)) salvarModelos(m);
-  for (const o of ofertas) if (migrarOferta(o)) gravarInteira(o);
+  let mudouModelos = migrarModelos(m);
+  for (const mg of MIGRACOES) if (!modelosMigr.includes(mg.id)) { mg.modelos(m); modelosMigr = [...modelosMigr, mg.id]; mudouModelos = true; }
+  if (mudouModelos) salvarModelos(m);
+  for (const o of ofertas) {
+    let mudou = migrarOferta(o);
+    for (const mg of MIGRACOES) if (!(o.migracoes || []).includes(mg.id)) { mg.oferta(o); o.migracoes = [...(o.migracoes || []), mg.id]; mudou = true; }
+    if (mudou) gravarInteira(o);
+  }
 }
 function conectar() {
   unsubs.forEach(u => { try { u(); } catch {} }); unsubs = [];
   let okOfertas = false, okModelos = false, migrou = false;
   const tentarMigrar = () => { if (okOfertas && okModelos && !migrou) { migrou = true; migrarTudo(); } };
-  unsubs.push(S.watchModelos(d => { modelos = d && d.listas ? clone(d.listas) : clone(MODELOS_PADRAO); okModelos = true; tentarMigrar(); if (okOfertas) scheduleRender(); }));
+  unsubs.push(S.watchModelos(d => { modelos = d && d.listas ? clone(d.listas) : clone(MODELOS_PADRAO); modelosMigr = (d && d.migracoes) || []; okModelos = true; tentarMigrar(); if (okOfertas) scheduleRender(); }));
   unsubs.push(S.watchOfertas(lista => {
     ofertas = lista;
     for (const id in pend) { const o = ofertas.find(x => x.id === id); if (o) merge(o, pend[id]); }
