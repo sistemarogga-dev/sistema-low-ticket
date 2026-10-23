@@ -474,7 +474,10 @@ let loginCriar = false; // tela de entrada mostrando "Criar conta"
 let verifMsg = null;
 let equipe = [];       // e-mails liberados (só o administrador lê)
 let equipeMsg = null;
-const ehAdmin = () => origem === 'firebase' && !!contaEmail && contaEmail.toLowerCase() === String(window.LT_ADMIN || '').toLowerCase();
+const ehAdmin = () => origem === 'firebase' && !!contaEmail && String(window.LT_ADMIN || '').toLowerCase().split(',').map(s => s.trim()).includes(contaEmail.toLowerCase());
+let espaco = { uid: '', donoEmail: '' };   // conta cujas ofertas estão abertas (a própria ou uma compartilhada)
+let apelidos = [];                         // e-mails com acesso compartilhado à minha conta
+let apelidoMsg = null;
 const abertas = {};
 const detalhes = new Set();
 const pend = {}, timers = {}, chains = {};
@@ -976,7 +979,21 @@ function renderEquipe() {
     <div class="card" style="display:grid;gap:10px"><h3>E-mails liberados · ${lista.length}</h3>
       <p class="hint" style="margin:0">Você (${esc(contaEmail)}) tem acesso sempre, como administrador.</p>
       <div class="rows">${rows || '<span style="color:var(--muted);font-size:14px">Nenhum e-mail liberado ainda.</span>'}</div>
-      <p class="hint" style="margin:0">Remover um e-mail bloqueia a entrada da pessoa. As ofertas dela não são apagadas e voltam se você liberar de novo.</p></div>`;
+      <p class="hint" style="margin:0">Remover um e-mail bloqueia a entrada da pessoa. As ofertas dela não são apagadas e voltam se você liberar de novo.</p></div>
+    ${renderCompartilhado()}`;
+}
+function renderCompartilhado() {
+  const u = window.firebase.auth().currentUser;
+  if (!u || espaco.uid !== u.uid) return `<div class="card" style="display:grid;gap:8px"><h3>Acesso compartilhado</h3>
+      <p class="hint" style="margin:0">Você está usando a conta compartilhada${espaco.donoEmail ? ' de <b>' + esc(espaco.donoEmail) + '</b>' : ''}. Tudo o que você faz aparece também nessa conta.</p></div>`;
+  const rows = [...apelidos].sort().map(e => `<div class="lrow" style="grid-template-columns:minmax(0,1fr) auto">
+      <span style="overflow-wrap:anywhere">${esc(e)}</span>
+      <button type="button" class="mini" data-act="rm-apelido" data-email="${esc(e)}">Parar de compartilhar</button></div>`).join('');
+  return `<div class="card" style="display:grid;gap:12px"><h3>Acesso compartilhado à sua conta</h3>
+      <p class="hint" style="margin:0">Para e-mails que também são seus. Quem entrar com eles abre <b>esta mesma conta</b>: as mesmas ofertas, modelos e equipe.</p>
+      <form id="form-apelido" class="add-row" style="padding:0"><input class="inp" id="ap-email" type="email" placeholder="outro-email@gmail.com" aria-label="E-mail para compartilhar a conta" required><button type="submit" class="btn lime sm">Compartilhar conta</button></form>
+      ${apelidoMsg ? `<p style="margin:0;font-size:14px;color:${apelidoMsg.erro ? 'var(--danger)' : 'var(--fg)'}">${esc(apelidoMsg.t)}</p>` : ''}
+      <div class="rows">${rows || '<span style="color:var(--muted);font-size:14px">Nenhum e-mail compartilhado.</span>'}</div></div>`;
 }
 
 function renderBackup() {
@@ -1111,6 +1128,12 @@ document.addEventListener('click', ev => {
       if (mode === 'local') saveLocal();
       toast(importPrev.ofertas.length + ' ofertas importadas.'); importPrev = null; render(); break; }
     case 'entrar': entrarGoogle(); break;
+    case 'rm-apelido': {
+      const e = el.dataset.email;
+      window.firebase.firestore().collection('apelidos').doc(e).delete()
+        .then(() => { apelidoMsg = { t: e + ' não abre mais esta conta.' }; render(); })
+        .catch(() => { apelidoMsg = { t: 'Não foi possível remover. Tente de novo.', erro: true }; render(); });
+      break; }
     case 'login-modo': loginCriar = el.dataset.criar === '1'; loginMsg = null; render(); break;
     case 'reenviar': {
       const u = window.firebase.auth().currentUser; if (!u) return;
@@ -1223,6 +1246,16 @@ document.addEventListener('submit', ev => {
     window.firebase.firestore().collection('acesso').doc('lista').set({ emails: window.firebase.firestore.FieldValue.arrayUnion(e) }, { merge: true })
       .then(() => { equipeMsg = { t: e + ' liberado. Agora copie o convite e envie para a pessoa.' }; render(); })
       .catch(() => { equipeMsg = { t: 'Não foi possível liberar. Tente de novo.', erro: true }; render(); });
+  } else if (f.id === 'form-apelido') {
+    const e = document.getElementById('ap-email').value.trim().toLowerCase();
+    const u = window.firebase.auth().currentUser; if (!u) return;
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) { apelidoMsg = { t: 'Digite um e-mail válido.', erro: true }; render(); return; }
+    if (e === contaEmail.toLowerCase()) { apelidoMsg = { t: 'Esse é o e-mail que você está usando agora.', erro: true }; render(); return; }
+    const fs = window.firebase.firestore();
+    fs.collection('apelidos').doc(e).set({ dono: u.uid, donoEmail: contaEmail, criadoEm: new Date().toISOString() })
+      .then(() => fs.collection('acesso').doc('lista').set({ emails: window.firebase.firestore.FieldValue.arrayUnion(e) }, { merge: true }))
+      .then(() => { apelidoMsg = { t: e + ' agora abre esta mesma conta. Entre com ele para conferir.' }; render(); })
+      .catch(() => { apelidoMsg = { t: 'Não foi possível compartilhar. Tente de novo.', erro: true }; render(); });
   } else if (f.id === 'form-senha') {
     const s1 = document.getElementById('sn-1').value, s2 = document.getElementById('sn-2').value;
     if (s1.length < 6) { senhaMsg = { t: 'A senha precisa ter pelo menos 6 caracteres.', erro: true }; render(); return; }
@@ -1270,10 +1303,21 @@ function entrarNoSistema(u) {
   if (!u.emailVerified) { mode = 'verificar'; render(); return; }
   mode = 'loading'; render();
   const fs = window.firebase.firestore();
-  S = adapterFirebase(fs, u.uid); conectar();
-  if (ehAdmin()) unsubs.push(fs.collection('acesso').doc('lista').onSnapshot(s => {
-    equipe = (s.exists && s.data().emails) || []; if (view === 'equipe') scheduleRender();
-  }, () => {}));
+  const abrir = (uid, donoEmail) => {
+    espaco = { uid, donoEmail };
+    S = adapterFirebase(fs, uid); conectar();
+    if (!ehAdmin()) return;
+    unsubs.push(fs.collection('acesso').doc('lista').onSnapshot(s => {
+      equipe = (s.exists && s.data().emails) || []; if (view === 'equipe') scheduleRender();
+    }, () => {}));
+    if (uid === u.uid) unsubs.push(fs.collection('apelidos').where('dono', '==', u.uid).onSnapshot(s => {
+      apelidos = s.docs.map(d => d.id); if (view === 'equipe') scheduleRender();
+    }, () => {}));
+  };
+  // Se este e-mail tem acesso compartilhado a outra conta, abre a conta compartilhada.
+  fs.collection('apelidos').doc(contaEmail.toLowerCase()).get()
+    .then(s => { const d = s.exists ? s.data() : null; if (d && d.dono) abrir(d.dono, d.donoEmail || ''); else abrir(u.uid, ''); })
+    .catch(() => abrir(u.uid, ''));
 }
 function msgAuth(e) {
   const c = (e && e.code) || '';

@@ -8,5 +8,5 @@ window.LT_FIREBASE = {
   messagingSenderId: "148599586476",
   appId: "1:148599586476:web:a0e72b546921e148eca909"
 };
-// Administrador: único que vê a tela Equipe e libera e-mails.
-window.LT_ADMIN = "sistemarogga@gmail.com";
+// Administradores (separados por vírgula): veem a tela Equipe e liberam e-mails.
+window.LT_ADMIN = "sistemarogga@gmail.com,jonathasgalvao7@gmail.com";
