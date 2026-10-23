@@ -306,7 +306,7 @@ td.num{font:500 13px var(--f-mono);font-variant-numeric:tabular-nums;white-space
     <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/></svg></div>
     <button type="button" class="rail-btn ico" data-act="nav" data-view="painel" id="nav-painel" title="Painel" aria-label="Painel"></button>
     <button type="button" class="rail-btn ico" data-act="nav" data-view="modelos" id="nav-modelos" title="Modelos de tarefas" aria-label="Modelos de tarefas"></button>
-    <button type="button" class="rail-btn ico" data-act="nav" data-view="backup" id="nav-backup" title="Backup" aria-label="Backup"></button>
+    <button type="button" class="rail-btn ico" data-act="nav" data-view="backup" id="nav-backup" title="Backup e acesso" aria-label="Backup e acesso"></button>
     <button type="button" class="rail-btn add ico" data-act="nova" id="nav-nova" title="Nova oferta" aria-label="Nova oferta"></button>
     <span class="grow"></span>
     <button type="button" class="avatar" id="conta" data-act="sair" hidden></button>
@@ -453,6 +453,9 @@ let draft = null;
 let confirmDel = false;
 let importPrev = null;
 let contaEmail = '';
+let loginEmail = '';
+let loginMsg = null;   // {t, erro}
+let senhaMsg = null;   // mensagem do cartão "Acesso com senha"
 const abertas = {};
 const detalhes = new Set();
 const pend = {}, timers = {}, chains = {};
@@ -655,7 +658,17 @@ function render() {
 function renderMain() {
   if (mode === 'loading') return `<div class="skel" style="height:80px"></div><div class="skel" style="height:240px"></div><p class="label" style="margin:0">Carregando suas ofertas…</p>`;
   if (mode === 'setup') return `<div class="center"><div class="login"><h1>Falta configurar o Firebase</h1><p>Abra o arquivo <b>firebase-config.js</b>, cole as chaves do seu projeto Firebase e publique de novo. O passo a passo está no arquivo LEIA-ME.</p></div></div>`;
-  if (mode === 'login') return `<div class="center"><div class="login"><div class="logo" style="color:var(--ink);background:var(--lime);border-radius:50%;width:64px;height:64px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" style="width:36px;height:36px;stroke-width:3"><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/></svg></div><h1>Sistema de Execução Low Ticket</h1><p>Entre com a sua conta Google para ver suas ofertas em qualquer dispositivo.</p><button class="btn lime" data-act="entrar">Entrar com Google</button></div></div>`;
+  if (mode === 'login') return `<div class="center"><div class="login"><div class="logo" style="color:var(--ink);background:var(--lime);border-radius:50%;width:64px;height:64px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" style="width:36px;height:36px;stroke-width:3"><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/></svg></div><h1>Sistema de Execução Low Ticket</h1><p>Entre para ver suas ofertas em qualquer dispositivo.</p>
+    <form id="form-login" style="display:grid;gap:10px;width:100%;text-align:left">
+      <label class="field"><span class="label">E-mail</span><input id="lg-email" type="email" autocomplete="username" required value="${esc(loginEmail)}"></label>
+      <label class="field"><span class="label">Senha</span><input id="lg-senha" type="password" autocomplete="current-password" required></label>
+      ${loginMsg ? `<p style="margin:0;font-size:14px;color:${loginMsg.erro ? 'var(--danger)' : 'var(--muted)'}">${esc(loginMsg.t)}</p>` : ''}
+      <button type="submit" class="btn lime" style="justify-content:center">Entrar</button>
+      <button type="button" class="mini" data-act="esqueci" style="justify-self:center">Esqueci minha senha</button>
+    </form>
+    <div style="display:flex;align-items:center;gap:10px;width:100%;color:var(--muted);font-size:13px"><span style="flex:1;height:1px;background:var(--line)"></span>ou<span style="flex:1;height:1px;background:var(--line)"></span></div>
+    <button class="btn" data-act="entrar" style="width:100%;justify-content:center">Entrar com Google</button>
+    <p style="font-size:13px">Primeiro acesso? Entre com o Google e crie sua senha na tela Backup &amp; acesso.</p></div></div>`;
   const banner = mode === 'local' ? `<div class="banner">Modo local: as ofertas ficam salvas só neste navegador.</div>` : '';
   if (view === 'oferta') {
     const o = ofertas.find(x => x.id === focoId);
@@ -909,7 +922,24 @@ function renderModelos() {
 
 function renderBackup() {
   const podeBaixar = origem !== 'claude';
-  return `<div class="head"><div><h1>Backup</h1><p>Leve suas ofertas para outro lugar ou guarde uma cópia de segurança.</p></div></div>
+  let acesso = '';
+  if (origem === 'firebase') {
+    const u = window.firebase.auth().currentUser;
+    const temSenha = !!(u && u.providerData.some(p => p.providerId === 'password'));
+    const msg = senhaMsg ? `<p style="margin:0;font-size:14px;color:${senhaMsg.erro ? 'var(--danger)' : 'var(--fg)'}">${esc(senhaMsg.t)}</p>` : '';
+    acesso = `<div class="card" style="display:grid;gap:12px;align-content:start"><h3>Acesso com senha</h3>
+      ${temSenha
+        ? `<p class="hint" style="margin:0">Senha configurada. Você pode entrar com <b>${esc(u.email)}</b> e a sua senha em qualquer dispositivo.</p>${msg}
+           <div class="gen-acts"><button class="btn sm" data-act="trocar-senha">Receber e-mail para trocar a senha</button></div>`
+        : `<p class="hint" style="margin:0">Crie uma senha para entrar com <b>${esc(u ? u.email : '')}</b> e senha, sem precisar do botão do Google. As suas ofertas continuam as mesmas.</p>
+           <form id="form-senha" style="display:grid;gap:10px">
+             <div class="grid2"><label class="field"><span class="label">Nova senha</span><input id="sn-1" type="password" autocomplete="new-password" minlength="6" required></label>
+             <label class="field"><span class="label">Repita a senha</span><input id="sn-2" type="password" autocomplete="new-password" minlength="6" required></label></div>
+             ${msg}<div><button type="submit" class="btn lime sm">Criar senha</button></div></form>`}
+    </div>`;
+  }
+  return `<div class="head"><div><h1>Backup &amp; acesso</h1><p>Guarde uma cópia das suas ofertas e configure como você entra no sistema.</p></div></div>
+    ${acesso}
     <div class="grid2">
       <div class="card" style="display:grid;gap:12px;align-content:start"><h3>Exportar</h3>
         <p class="hint" style="margin:0">${ofertas.length} ofertas e seus modelos de tarefas, em um arquivo JSON.</p>
@@ -1022,6 +1052,20 @@ document.addEventListener('click', ev => {
       if (mode === 'local') saveLocal();
       toast(importPrev.ofertas.length + ' ofertas importadas.'); importPrev = null; render(); break; }
     case 'entrar': entrarGoogle(); break;
+    case 'esqueci': {
+      const em = (document.getElementById('lg-email') || {}).value || '';
+      loginEmail = em.trim();
+      if (!loginEmail) { loginMsg = { t: 'Digite seu e-mail acima e clique de novo em "Esqueci minha senha".', erro: true }; render(); return; }
+      window.firebase.auth().sendPasswordResetEmail(loginEmail)
+        .then(() => { loginMsg = { t: 'Se esse e-mail tiver senha cadastrada, enviamos um link para criar uma nova. Confira também o spam.' }; render(); })
+        .catch(e => { loginMsg = { t: msgAuth(e), erro: true }; render(); });
+      break; }
+    case 'trocar-senha': {
+      const u = window.firebase.auth().currentUser; if (!u) return;
+      window.firebase.auth().sendPasswordResetEmail(u.email)
+        .then(() => { senhaMsg = { t: 'Enviamos para ' + u.email + ' um link para trocar a senha.' }; render(); })
+        .catch(e => { senhaMsg = { t: msgAuth(e), erro: true }; render(); });
+      break; }
     case 'sair': if (origem === 'firebase') { flushAll(); window.firebase.auth().signOut(); } break;
   }
 });
@@ -1074,6 +1118,23 @@ document.addEventListener('submit', ev => {
     const o = criarOferta({ nome, origem: org, link: document.getElementById('nv-link').value.trim(), obs: '',
       ticket, checkout: document.getElementById('nv-checkout').value, pagina: document.getElementById('nv-pagina').value.trim() });
     fecharModal(); toast('Checklist gerado para ' + nome + '.'); irPara('oferta', o.id);
+  } else if (f.id === 'form-login') {
+    loginEmail = document.getElementById('lg-email').value.trim();
+    const senha = document.getElementById('lg-senha').value;
+    loginMsg = { t: 'Entrando…' }; render();
+    window.firebase.auth().signInWithEmailAndPassword(loginEmail, senha)
+      .then(() => { loginMsg = null; })
+      .catch(e => { loginMsg = { t: msgAuth(e), erro: true }; render(); });
+  } else if (f.id === 'form-senha') {
+    const s1 = document.getElementById('sn-1').value, s2 = document.getElementById('sn-2').value;
+    if (s1.length < 6) { senhaMsg = { t: 'A senha precisa ter pelo menos 6 caracteres.', erro: true }; render(); return; }
+    if (s1 !== s2) { senhaMsg = { t: 'As duas senhas não são iguais.', erro: true }; render(); return; }
+    const u = window.firebase.auth().currentUser; if (!u) return;
+    const cred = window.firebase.auth.EmailAuthProvider.credential(u.email, s1);
+    u.linkWithCredential(cred)
+      .then(() => u.reload())
+      .then(() => { senhaMsg = { t: 'Senha criada. A partir de agora você pode entrar com e-mail e senha.' }; render(); })
+      .catch(e => { senhaMsg = { t: msgAuth(e), erro: true }; render(); });
   } else if (f.dataset.form === 'extra') {
     const o = ofertas.find(x => x.id === focoId); const inp = f.querySelector('input');
     const t = inp.value.trim(); if (!o || !t) return;
@@ -1103,11 +1164,25 @@ function conectar() {
     okOfertas = true; mode = 'remote'; aplicarHash(); scheduleRender();
   }, () => toast('Não foi possível carregar as ofertas. Recarregue a página.')));
 }
+function msgAuth(e) {
+  const c = (e && e.code) || '';
+  if (/invalid-credential|wrong-password|user-not-found|invalid-login/.test(c)) return 'E-mail ou senha incorretos. Se você nunca criou senha, entre com o Google.';
+  if (/invalid-email/.test(c)) return 'Esse e-mail não parece válido.';
+  if (/too-many-requests/.test(c)) return 'Muitas tentativas. Espere alguns minutos e tente de novo.';
+  if (/weak-password/.test(c)) return 'Senha fraca. Use pelo menos 6 caracteres.';
+  if (/requires-recent-login/.test(c)) return 'Por segurança, saia, entre de novo com o Google e crie a senha logo em seguida.';
+  if (/provider-already-linked|email-already-in-use|credential-already-in-use/.test(c)) return 'Esta conta já tem senha. Use "Receber e-mail para trocar a senha".';
+  if (/operation-not-allowed/.test(c)) return 'O login com e-mail e senha não está ativado no Firebase.';
+  if (/network/.test(c)) return 'Sem conexão. Verifique a internet.';
+  if (/popup-closed|cancelled-popup/.test(c)) return 'A janela do Google foi fechada antes de terminar.';
+  if (/unauthorized-domain/.test(c)) return 'Este endereço não está autorizado no Firebase.';
+  return 'Não foi possível concluir. Tente de novo.';
+}
 function entrarGoogle() {
   const auth = window.firebase.auth(); const prov = new window.firebase.auth.GoogleAuthProvider();
   auth.signInWithPopup(prov).catch(err => {
-    if (err && /popup/.test(err.code || '')) auth.signInWithRedirect(prov);
-    else toast('Não foi possível entrar. ' + (err && err.code === 'auth/unauthorized-domain' ? 'Autorize este domínio no Firebase (veja o LEIA-ME).' : 'Tente de novo.'));
+    if (err && err.code === 'auth/popup-blocked') auth.signInWithRedirect(prov);
+    else { loginMsg = { t: msgAuth(err), erro: true }; render(); }
   });
 }
 async function iniciar() {
