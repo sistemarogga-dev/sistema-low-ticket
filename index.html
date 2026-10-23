@@ -841,7 +841,9 @@ function renderOferta(o) {
       <div class="o-meta"><span class="idchip">${esc(o.id)}</span><span>Ticket <b>${fmtValor(o.ticket)}</b></span><span>Checkout <b>${o.checkout ? esc(o.checkout) : '—'}</b></span><span>Cadastrada em ${fmtData(o.criadoEm)}</span></div>
       <div class="o-actions">
         <a class="round ico" ${urlOk(o.pagina) ? `href="${esc(o.pagina)}" target="_blank" rel="noopener"` : 'aria-disabled="true"'} title="Abrir página de vendas" aria-label="Abrir página de vendas">${I.page}</a>
-        <a class="round ico" ${urlOk(o.link) ? `href="${esc(o.link)}" target="_blank" rel="noopener"` : 'aria-disabled="true"'} title="Abrir pasta" aria-label="Abrir pasta">${I.folder}</a>
+        ${urlOk(o.link) || !temDrive()
+          ? `<a class="round ico" ${urlOk(o.link) ? `href="${esc(o.link)}" target="_blank" rel="noopener"` : 'aria-disabled="true"'} title="Abrir pasta" aria-label="Abrir pasta">${I.folder}</a>`
+          : `<button type="button" class="round ico" data-act="criar-pasta" title="Criar pasta no Google Drive" aria-label="Criar pasta no Google Drive" style="background:var(--surface-2);color:var(--fg)">${I.folder}</button>`}
         <button type="button" class="round ico" data-act="duplicar" title="Duplicar oferta" aria-label="Duplicar oferta">${I.copy}</button>
         <button type="button" class="round ico" data-act="arquivar" title="${o.arquivada ? 'Desarquivar' : 'Arquivar'}" aria-label="${o.arquivada ? 'Desarquivar' : 'Arquivar'}">${I.archive}</button>
       </div>
@@ -973,7 +975,8 @@ function renderDados(o) {
           <label class="field"><span class="label">Página de vendas</span><input id="f-pagina" type="url" data-path="pagina" value="${esc(o.pagina)}" placeholder="https://…"></label>
         </div>
         <div class="grid2">
-          <label class="field"><span class="label">Pasta / link</span><input id="f-link" type="url" data-path="link" value="${esc(o.link)}" placeholder="https://drive.google.com/…"></label>
+          <label class="field"><span class="label">Pasta / link</span><input id="f-link" type="url" data-path="link" value="${esc(o.link)}" placeholder="https://drive.google.com/…">
+            ${temDrive() && !o.link ? `<button type="button" class="btn sm lime" data-act="criar-pasta" style="justify-self:start;margin-top:4px"><span class="ico">${I.folder}</span>Criar pasta no Drive</button>` : ''}</label>
           <label class="field"><span class="label">Observações</span><textarea id="f-obs" data-path="obs" rows="2" placeholder="Nicho, ideias, pendências…">${esc(o.obs)}</textarea></label>
         </div>
       </div></div>
@@ -1084,7 +1087,7 @@ function abrirNova() {
       <label class="field"><span class="label">Ticket</span><span class="money"><input id="nv-ticket" inputmode="decimal" placeholder="0,00"></span></label>
       <label class="field"><span class="label">Checkout</span><select id="nv-checkout">${optsPlataforma('')}</select></label>
       <label class="field"><span class="label">Página de vendas</span><input id="nv-pagina" type="url" placeholder="https://…"></label></div>
-    <label class="field"><span class="label">Pasta / link (opcional)</span><input id="nv-link" type="url" placeholder="https://drive.google.com/…"></label>
+    <label class="field"><span class="label">Pasta / link (opcional)</span><input id="nv-link" type="url" placeholder="https://drive.google.com/…">${temDrive() ? `<small style="color:var(--muted);font-size:12.5px">Deixe vazio para criar a pasta "${esc(DRIVE_RAIZ)} › nome da oferta" no seu Google Drive.</small>` : ''}</label>
     <p id="nv-erro" style="color:var(--danger)" hidden></p>
     <div class="modal-acts"><button type="button" class="btn" data-act="fechar-modal">Cancelar</button><button type="submit" class="btn lime">Gerar checklist</button></div>
   </form></div>`;
@@ -1177,6 +1180,7 @@ document.addEventListener('click', ev => {
         .then(() => { apelidoMsg = { t: e + ' não abre mais esta conta.' }; render(); })
         .catch(() => { apelidoMsg = { t: 'Não foi possível remover. Tente de novo.', erro: true }; render(); });
       break; }
+    case 'criar-pasta': if (o) criarPastaDrive(o); break;
     case 'login-modo': loginCriar = el.dataset.criar === '1'; loginMsg = null; render(); break;
     case 'reenviar': {
       const u = window.firebase.auth().currentUser; if (!u) return;
@@ -1265,6 +1269,7 @@ document.addEventListener('submit', ev => {
     const o = criarOferta({ nome, origem: org, link: document.getElementById('nv-link').value.trim(), obs: '',
       ticket, checkout: document.getElementById('nv-checkout').value, pagina: document.getElementById('nv-pagina').value.trim() });
     fecharModal(); toast('Checklist gerado para ' + nome + '.'); irPara('oferta', o.id);
+    if (temDrive() && !o.link) criarPastaDrive(o);
   } else if (f.id === 'form-login') {
     loginEmail = document.getElementById('lg-email').value.trim();
     const senha = document.getElementById('lg-senha').value;
@@ -1382,6 +1387,62 @@ function msgAuth(e) {
   if (/unauthorized-domain/.test(c)) return 'Este endereço não está autorizado no Firebase.';
   return 'Não foi possível concluir. Tente de novo.';
 }
+/* ---------- Google Drive: pasta da oferta ---------- */
+const DRIVE_RAIZ = 'Ofertas Low Ticket';
+const DRIVE_PASTA = 'application/vnd.google-apps.folder';
+let driveToken = { valor: '', expira: 0 };
+const temDrive = () => origem === 'firebase';
+// Abre a janela do Google na hora do clique (antes de qualquer espera), senão o navegador bloqueia o pop-up.
+function tokenDrive() {
+  if (driveToken.valor && Date.now() < driveToken.expira) return Promise.resolve(driveToken.valor);
+  const auth = window.firebase.auth(); const u = auth.currentUser;
+  const prov = new window.firebase.auth.GoogleAuthProvider();
+  prov.addScope('https://www.googleapis.com/auth/drive.file');
+  prov.setCustomParameters({ login_hint: u.email || '' });
+  const temGoogle = u.providerData.some(p => p.providerId === 'google.com');
+  return (temGoogle ? u.reauthenticateWithPopup(prov) : u.linkWithPopup(prov)).then(r => {
+    const t = r.credential && r.credential.accessToken;
+    if (!t) throw new Error('sem-token');
+    driveToken = { valor: t, expira: Date.now() + 50 * 60 * 1000 };
+    return t;
+  });
+}
+async function driveApi(token, url, opts = {}) {
+  const r = await fetch('https://www.googleapis.com/drive/v3/' + url, { ...opts, headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json', ...(opts.headers || {}) } });
+  if (!r.ok) { const e = new Error('drive-' + r.status); e.status = r.status; throw e; }
+  return r.json();
+}
+const criarPastaApi = (token, nome, pai) => driveApi(token, 'files?fields=id,webViewLink', {
+  method: 'POST', body: JSON.stringify({ name: nome, mimeType: DRIVE_PASTA, ...(pai ? { parents: [pai] } : {}) })
+});
+async function pastaRaiz(token) {
+  const q = encodeURIComponent(`name='${DRIVE_RAIZ}' and mimeType='${DRIVE_PASTA}' and trashed=false and 'root' in parents`);
+  const r = await driveApi(token, `files?q=${q}&fields=files(id)&spaces=drive`);
+  if (r.files && r.files.length) return r.files[0].id;
+  return (await criarPastaApi(token, DRIVE_RAIZ)).id;
+}
+// Cria "Ofertas Low Ticket/<nome da oferta>" e grava o link no campo Pasta da oferta.
+function criarPastaDrive(o) {
+  const t = tokenDrive();   // chamado de forma síncrona dentro do clique
+  toast('Criando a pasta no Google Drive…');
+  return t.then(async token => {
+    const raiz = await pastaRaiz(token);
+    const p = await criarPastaApi(token, o.nome, raiz);
+    patchOferta(o.id, { link: p.webViewLink, pastaDriveId: p.id });
+    if (focoId === o.id) render();
+    toast('Pasta criada no Google Drive: ' + DRIVE_RAIZ + ' › ' + o.nome);
+  }).catch(e => {
+    if (e && e.status === 401) driveToken = { valor: '', expira: 0 };
+    const c = (e && e.code) || '';
+    toast(/popup-closed|cancelled-popup|user-cancelled/.test(c) ? 'Pasta não criada: a permissão do Google Drive não foi concedida. Você pode criar depois em Dados.'
+      : /popup-blocked/.test(c) ? 'O navegador bloqueou a janela do Google. Libere pop-ups deste site e use "Criar pasta no Drive" em Dados.'
+      : /credential-already-in-use/.test(c) ? 'Essa conta Google já está ligada a outro usuário do sistema.'
+      : /user-mismatch/.test(c) ? 'Escolha na janela do Google a mesma conta com que você entrou no sistema (' + contaEmail + ').'
+      : e && e.status === 403 ? 'O Google recusou o acesso ao Drive. Tente de novo em instantes.'
+      : 'Não foi possível criar a pasta no Drive. Tente de novo em Dados.');
+  });
+}
+
 function entrarGoogle() {
   const auth = window.firebase.auth(); const prov = new window.firebase.auth.GoogleAuthProvider();
   auth.signInWithPopup(prov).catch(err => {
