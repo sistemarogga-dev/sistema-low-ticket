@@ -644,7 +644,7 @@ function criarOferta({ nome, origem: org, link, obs, ticket, checkout, pagina })
 function duplicarOferta(o) {
   const c = clone(o);
   c.id = novoId(); c.nome = nomeUnico(o.nome + ' (variação)'); c.criadoEm = new Date().toISOString();
-  c.arquivada = false; c.pagina = ''; c.gerados = {};
+  c.arquivada = false; c.pagina = ''; c.gerados = {}; c.conversas = {};
   for (const ek in c.etapas || {}) for (const tid in c.etapas[ek]) Object.assign(c.etapas[ek][tid], { feito: false, feitoEm: '', link: '', nota: '' });
   ofertas.push(c); gravarInteira(c); return c;
 }
@@ -946,9 +946,36 @@ function renderFicha(o, potencial) {
       </div></div>`;
 }
 
+const ferramentaIA = url => {
+  const h = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; } })();
+  if (/(^|\.)chatgpt\.com$|(^|\.)chat\.openai\.com$/.test(h)) return { nome: 'ChatGPT', cor: 'var(--sky)' };
+  if (/(^|\.)claude\.ai$/.test(h)) return { nome: 'Claude', cor: 'var(--coral)' };
+  if (/(^|\.)gemini\.google\.com$/.test(h)) return { nome: 'Gemini', cor: 'var(--lav)' };
+  return { nome: h || 'Link', cor: 'var(--surface-2)' };
+};
+function renderConversas(o, sufixo) {
+  const lista = itensDe(o.conversas).sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm)));
+  const rows = lista.map(c => {
+    const f = ferramentaIA(c.url);
+    return `<div class="lrow" style="grid-template-columns:auto minmax(0,1fr) auto auto">
+      <span class="tag" style="--c:${f.cor}">${esc(f.nome)}</span>
+      <span style="min-width:0;overflow-wrap:anywhere"><b style="font-weight:600">${esc(c.titulo || 'Conversa sem título')}</b><br><small style="color:var(--muted)">${fmtData(c.criadoEm)}</small></span>
+      <a class="btn sm" href="${esc(c.url)}" target="_blank" rel="noopener">Abrir ↗</a>
+      <button type="button" class="mini" data-act="rm-item" data-lista="conversas" data-id="${esc(c.id)}">Remover</button></div>`;
+  }).join('');
+  return `<div class="card" style="display:grid;gap:12px"><h3 style="margin:0">Conversas com IA</h3>
+      <p class="hint" style="margin:0">Guarde os links dos chats do ChatGPT, Claude ou Gemini usados nesta oferta.</p>
+      <form class="grid3" data-form="conversa" style="grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) auto;align-items:end">
+        <label class="field"><span class="label">Título (opcional)</span><input id="cv-t-${sufixo}" placeholder="Ex.: Copy da página v2"></label>
+        <label class="field"><span class="label">Link da conversa</span><input id="cv-u-${sufixo}" type="url" required placeholder="https://chatgpt.com/c/…"></label>
+        <button type="submit" class="btn lime sm" style="height:40px">Salvar link</button>
+      </form>
+      <div class="rows">${rows || '<span style="color:var(--muted);font-size:14px">Nenhuma conversa salva ainda.</span>'}</div></div>`;
+}
 function renderGerador(o) {
   const f = o.ficha || {};
   return `<div class="card" style="padding:16px 20px"><p style="margin:0;color:var(--muted);font-size:14px">Cada botão monta um prompt com os dados da Ficha. Copie, cole no ChatGPT ou no Claude e guarde o resultado aqui embaixo para não perder.</p></div>` +
+  renderConversas(o, 'g') +
   GERADORES.map(g => {
     const e = ETAPA_POR[g.etapa];
     const faltam = g.precisa.filter(k => !String(f[k] || '').trim()).map(k => FICHA_NOME[k]);
@@ -982,6 +1009,7 @@ function renderDados(o) {
           <label class="field"><span class="label">Observações</span><textarea id="f-obs" data-path="obs" rows="2" placeholder="Nicho, ideias, pendências…">${esc(o.obs)}</textarea></label>
         </div>
       </div></div>
+    ${renderConversas(o, 'd')}
     <div class="danger-zone">${confirmDel
       ? `<span>Excluir “${esc(o.nome)}” e todo o checklist? Não dá para desfazer.</span><button class="btn danger solid sm" data-act="excluir-sim">Excluir de vez</button><button class="btn sm" data-act="excluir-nao">Cancelar</button>`
       : `<button class="btn danger sm" data-act="excluir">Excluir oferta</button><span>Prefira arquivar: a oferta sai das listas sem perder nada.</span>`}</div>`;
@@ -1316,6 +1344,14 @@ document.addEventListener('submit', ev => {
       .then(() => u.reload())
       .then(() => { senhaMsg = { t: 'Senha criada. A partir de agora você pode entrar com e-mail e senha.' }; render(); })
       .catch(e => { senhaMsg = { t: msgAuth(e), erro: true }; render(); });
+  } else if (f.dataset.form === 'conversa') {
+    const o = ofertas.find(x => x.id === focoId); if (!o) return;
+    const [tIn, uIn] = f.querySelectorAll('input');
+    const url = uIn.value.trim();
+    if (!urlOk(url)) { toast('Cole o link completo da conversa, começando com https://'); return; }
+    const n = itensDe(o.conversas).length;
+    patchOferta(o.id, { conversas: { ['c' + Date.now().toString(36)]: { titulo: tIn.value.trim(), url, criadoEm: new Date().toISOString(), ordem: n + 1 } } });
+    toast('Conversa salva na oferta.'); render();
   } else if (f.dataset.form === 'extra') {
     const o = ofertas.find(x => x.id === focoId); const inp = f.querySelector('input');
     const t = inp.value.trim(); if (!o || !t) return;
