@@ -55,6 +55,8 @@ a{color:inherit}
 /* casca */
 .shell{height:100%;display:grid;grid-template-columns:76px 330px minmax(0,1fr);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
 .shell.solo{grid-template-columns:76px minmax(0,1fr)}
+.shell.sem-rail{grid-template-columns:minmax(0,1fr)}
+.shell.sem-rail .rail{display:none}
 .rail{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 0;color:var(--shell-muted)}
 .logo{width:44px;height:44px;display:grid;place-items:center;color:var(--lime);margin-bottom:14px}
 .logo svg{width:34px;height:34px;stroke-width:3.4}
@@ -730,6 +732,7 @@ function render() {
   const comDados = mode === 'remote' || mode === 'local';
   document.getElementById('nav-nova').hidden = !comDados;
   shell.classList.toggle('solo', !comDados || sideOculta);
+  shell.classList.toggle('sem-rail', !comDados);   // login e telas de acesso: sem a barra lateral
   side.hidden = !comDados || sideOculta;
   const bs = document.getElementById('btn-side');
   bs.hidden = !comDados;
