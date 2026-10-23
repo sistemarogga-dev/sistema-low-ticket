@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#1C1D1B">
 <title>Sistema de Execução Low Ticket</title>
-<meta name="description" content="Organize suas ofertas low ticket nas 6 etapas: desenvolvimento, criação do produto, página de vendas, estrutura e criativos.">
+<meta name="description" content="Organize suas ofertas low ticket nas 5 etapas: desenvolvimento, criação do produto, página de vendas, estrutura e criativos.">
 <meta name="application-name" content="Low Ticket">
 <meta name="apple-mobile-web-app-title" content="Low Ticket">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -374,25 +374,24 @@ document.getElementById('nav-equipe').innerHTML = '<svg viewBox="0 0 24 24"><cir
 document.getElementById('nav-nova').innerHTML = I.plus;
 
 /* ---------- Método: etapas e modelos (da planilha) ---------- */
-const ETAPA1 = { key: 'e1', num: '01', nome: 'Mineração', cor: '--s1' };
 const ETAPAS = [
-  { key: 'e2', num: '02', nome: 'Desenvolvimento', titulo: 'Desenvolvimento da oferta', cor: '--s2',
+  { key: 'e2', num: '01', nome: 'Desenvolvimento', titulo: 'Desenvolvimento da oferta', cor: '--s2',
     desc: 'Modelagem para ideias mineradas; refinamento para concepções próprias.',
     foco: 'Pesquisa de demanda + comentários reais + mapa de vantagens + ficha de concepção.',
     refs: 'YouTube, Google Trends, Reclame Aqui, marketplaces, Mapa das Vantagens e Obra de Arte 100k.' },
-  { key: 'e3', num: '03', nome: 'Criação do Produto', titulo: 'Criação do Produto', cor: '--s3',
+  { key: 'e3', num: '02', nome: 'Criação do Produto', titulo: 'Criação do Produto', cor: '--s3',
     desc: 'Produza o material principal, os bônus e os order bumps definidos na oferta.',
     foco: 'Da redação à diagramação e teste dos arquivos.',
     refs: 'ChatGPT/Claude, Pinterest e Lovable.' },
-  { key: 'e4', num: '04', nome: 'Página de Vendas', titulo: 'Página de Vendas', cor: '--s4',
+  { key: 'e4', num: '03', nome: 'Página de Vendas', titulo: 'Página de Vendas', cor: '--s4',
     desc: 'Escreva a copy, monte a página no Lovable e coloque o link do checkout.',
     foco: 'Promessas honestas; imagens fiéis ao produto; boa experiência no celular e no computador.',
     refs: 'ChatGPT/Claude, Lovable e WebP.' },
-  { key: 'es', num: '05', nome: 'Estrutura', titulo: 'Estrutura', cor: '--s6',
+  { key: 'es', num: '04', nome: 'Estrutura', titulo: 'Estrutura', cor: '--s6',
     desc: 'Cadastre a oferta no checkout e deixe o rastreamento pronto para medir cada venda.',
     foco: 'Produto e order bumps cadastrados, UTMs configuradas e eventos da Meta disparando corretamente.',
     refs: 'Cakto/Green/WiaPay, UTMFY, Pixel Meta e Testar Eventos.' },
-  { key: 'e5', num: '06', nome: 'Criativos', titulo: 'Criativos', cor: '--s5',
+  { key: 'e5', num: '05', nome: 'Criativos', titulo: 'Criativos', cor: '--s5',
     desc: 'Produza anúncios estáticos e em vídeo com demonstrações reais do produto.',
     foco: 'Testar ganchos visuais e textuais, editar versões curtas e organizar a pasta final.',
     refs: 'Pinterest, Behance, Google Flow/Gemini, ElevenLabs, CapCut, Drive.' }
@@ -440,12 +439,12 @@ const MODELOS_PADRAO = {
     'Guardar todos os vídeos e imagens da oferta dentro de uma pasta no google Drive.')
 };
 const LISTAS = [
-  { k: 'e2_Modelagem', etapa: 'e2', rotulo: '02 · Desenvolvimento · rota Modelagem', ajuda: 'Gerada para ofertas de origem Mineração.' },
-  { k: 'e2_Refinamento', etapa: 'e2', rotulo: '02 · Desenvolvimento · rota Refinamento', ajuda: 'Gerada para ofertas de origem Concepção (ideia própria).' },
-  { k: 'e3', etapa: 'e3', rotulo: '03 · Criação do Produto', ajuda: 'Igual para todas as ofertas.' },
-  { k: 'e4', etapa: 'e4', rotulo: '04 · Página de Vendas', ajuda: 'Igual para todas as ofertas.' },
-  { k: 'es', etapa: 'es', rotulo: '05 · Estrutura', ajuda: 'Igual para todas as ofertas.' },
-  { k: 'e5', etapa: 'e5', rotulo: '06 · Criativos', ajuda: 'Igual para todas as ofertas.' }
+  { k: 'e2_Modelagem', etapa: 'e2', rotulo: '01 · Desenvolvimento · rota Modelagem', ajuda: 'Gerada para ofertas de origem Mineração.' },
+  { k: 'e2_Refinamento', etapa: 'e2', rotulo: '01 · Desenvolvimento · rota Refinamento', ajuda: 'Gerada para ofertas de origem Concepção (ideia própria).' },
+  { k: 'e3', etapa: 'e3', rotulo: '02 · Criação do Produto', ajuda: 'Igual para todas as ofertas.' },
+  { k: 'e4', etapa: 'e4', rotulo: '03 · Página de Vendas', ajuda: 'Igual para todas as ofertas.' },
+  { k: 'es', etapa: 'es', rotulo: '04 · Estrutura', ajuda: 'Igual para todas as ofertas.' },
+  { k: 'e5', etapa: 'e5', rotulo: '05 · Criativos', ajuda: 'Igual para todas as ofertas.' }
 ];
 // Migração para a etapa Estrutura: tarefas que saíram de Criação do Produto e Página de Vendas.
 const MOVIDAS = [
@@ -791,7 +790,7 @@ function renderSide() {
         <span class="tag" style="--c:${r.concluida ? 'var(--lime)' : e ? cv(e.cor) : 'var(--s1)'}">${pctTxt(r.pct)}</span></span>
     </button>`;
   }).join('');
-  return `<div class="brand"><b>Sistema de Execução</b><small>Low Ticket · 6 etapas</small></div>${tiles}
+  return `<div class="brand"><b>Sistema de Execução</b><small>Low Ticket · 5 etapas</small></div>${tiles}
     <div class="list-head"><i></i>Ofertas<span class="n">${lista.length}</span></div>
     <input class="side-search" id="busca" type="search" placeholder="Buscar por nome ou ID" value="${esc(busca)}" aria-label="Buscar oferta">
     <div class="chips">${chip('andamento', 'Em andamento')}${chip('concluidas', 'Concluídas')}${chip('todas', 'Todas')}${chip('arquivadas', 'Arquivadas')}</div>
@@ -800,7 +799,7 @@ function renderSide() {
 
 function renderPainel() {
   const rs = ofertas.filter(o => !o.arquivada).map(o => ({ o, r: resumo(o) }));
-  const head = `<div class="head"><div><h1>Painel</h1><p>Onde cada oferta está no método das 6 etapas.</p></div><button class="btn lime" data-act="nova"><span class="ico">${I.plus}</span>Nova oferta</button></div>`;
+  const head = `<div class="head"><div><h1>Painel</h1><p>Onde cada oferta está no método das 5 etapas.</p></div><button class="btn lime" data-act="nova"><span class="ico">${I.plus}</span>Nova oferta</button></div>`;
   if (!rs.length) return head + `<div class="empty"><h3>Nenhuma oferta ativa</h3><p>Cadastre o nome e a origem (Mineração ou Concepção). O sistema gera na hora o checklist das etapas 02 a 05.</p><button class="btn lime" data-act="nova">Cadastrar oferta</button></div>`;
   const cols = [...ETAPAS.map(e => ({ key: e.key, nome: e.num + ' · ' + e.nome, cor: e.cor })), { key: 'ok', nome: 'Concluídas', cor: '--lime' }];
   const board = cols.map(c => {
@@ -851,11 +850,11 @@ function renderOferta(o) {
   </div>`;
   const tab = (k, t) => `<button type="button" class="tab" role="tab" data-act="aba" data-aba="${k}" aria-selected="${aba === k}">${t}</button>`;
   const tabs = `<div class="tabs" role="tablist">${tab('checklist', 'Checklist')}${tab('ficha', 'Ficha da oferta')}${tab('gerador', 'Gerador de copy')}${tab('dados', 'Dados')}</div>`;
-  const steps = [ETAPA1, ...ETAPAS].map(e => {
-    const p = e.key === 'e1' ? { ok: 1, tot: 1 } : r.por[e.key];
+  const steps = ETAPAS.map(e => {
+    const p = r.por[e.key];
     const done = p.tot > 0 && p.ok === p.tot;
-    return `<button type="button" class="stp ${done ? 'done' : ''} ${e.key === atualKey ? 'cur' : ''}" ${e.key !== 'e1' ? `data-act="ir-etapa" data-k="${e.key}"` : 'disabled'}>
-      <i>${done ? I.check : ''}</i><span>${e.num} · ${esc(e.nome)}</span><small>${e.key === 'e1' ? '' : p.ok + '/' + p.tot}</small></button>`;
+    return `<button type="button" class="stp ${done ? 'done' : ''} ${e.key === atualKey ? 'cur' : ''}" data-act="ir-etapa" data-k="${e.key}">
+      <i>${done ? I.check : ''}</i><span>${e.num} · ${esc(e.nome)}</span><small>${p.ok}/${p.tot}</small></button>`;
   }).join('');
   const bumps = itensDe(o.bumps).filter(b => typeof b.preco === 'number');
   const potencial = (typeof o.ticket === 'number' ? o.ticket : 0) + bumps.reduce((s, b) => s + b.preco, 0);
