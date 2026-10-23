@@ -57,6 +57,9 @@ a{color:inherit}
 .avatar{width:40px;height:40px;border-radius:50%;background:var(--lav);color:var(--ink);display:grid;place-items:center;font-weight:700;border:0;cursor:pointer}
 
 .side{overflow:auto;padding:18px 14px 24px 4px;color:var(--shell-fg);display:flex;flex-direction:column;gap:18px}
+.brand{display:grid;gap:2px;padding:6px 2px 0}
+.brand b{font-size:20px;font-weight:700;letter-spacing:-.01em;line-height:1.15}
+.brand small{color:var(--shell-muted);font-size:13px}
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .tile{background:var(--shell-2);border-radius:var(--r-lg);padding:14px;min-height:100px;display:flex;flex-direction:column;justify-content:space-between}
 .tile span{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--shell-muted)}
@@ -732,7 +735,7 @@ function renderSide() {
         <span class="tag" style="--c:${r.concluida ? 'var(--lime)' : e ? cv(e.cor) : 'var(--s1)'}">${pctTxt(r.pct)}</span></span>
     </button>`;
   }).join('');
-  return `${tiles}
+  return `<div class="brand"><b>Sistema de Execução</b><small>Low Ticket · 5 etapas</small></div>${tiles}
     <div class="list-head"><i></i>Ofertas<span class="n">${lista.length}</span></div>
     <input class="side-search" id="busca" type="search" placeholder="Buscar por nome ou ID" value="${esc(busca)}" aria-label="Buscar oferta">
     <div class="chips">${chip('andamento', 'Em andamento')}${chip('concluidas', 'Concluídas')}${chip('todas', 'Todas')}${chip('arquivadas', 'Arquivadas')}</div>
