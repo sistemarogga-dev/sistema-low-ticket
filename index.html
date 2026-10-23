@@ -400,12 +400,12 @@ const ETAPA_POR = Object.fromEntries(ETAPAS.map(e => [e.key, e]));
 const ROTA = { 'Mineração': 'Modelagem', 'Concepção': 'Refinamento' };
 const EXTRATOR = { nome: 'Abrir extrator', url: 'https://extract-social-midia.lovable.app/' };
 // Atalhos de ferramenta ligados a um passo: aparecem como botão ao lado da tarefa.
-const FERRAMENTAS = { 'Extraia os comentários de vídeos do youtube.': EXTRATOR };
+const FERRAMENTAS = { 'Extraia os comentários de vídeos do youtube e enviar no chatGPT ou Claude.': EXTRATOR };
 const L = (...ts) => ts.map(t => ({ t, ev: '', como: '', ...(FERRAMENTAS[t] ? { ferramenta: FERRAMENTAS[t] } : {}) }));
 const DEV = [
   'Desenvolver uma ideia de produto mudando algum aspecto da oferta minerada (Nicho, público, dor, mecanismo e formato) ou refinar uma ideia pré-concebida.',
   'Pesquisar sobre a ideia do produto no youtube, google trends, reclame aqui, marketing places para ver se o produto soluciona uma dor latente.',
-  'Extraia os comentários de vídeos do youtube.',
+  'Extraia os comentários de vídeos do youtube e enviar no chatGPT ou Claude.',
   'Preencher a Ficha da oferta.'
 ];
 // Passos que saíram do Desenvolvimento (removidos também das ofertas existentes pela migração 'sem-vantagens-doc').
@@ -1383,6 +1383,7 @@ function aplicarHash() {
 }
 // Mudanças pontuais no método: aplicadas uma única vez aos modelos e a cada oferta (marcadas em "migracoes").
 const T_REGISTRAR = 'Registrar os melhores comentários para conhecermos a fundo o público. (Essa pesquisa de público será essencial para escrever a copy da página de vendas).';
+const T_EXTRAIR_V1 = 'Extraia os comentários de vídeos do youtube.';
 const T_EXTRAIR = DEV[2];
 const T_CHECKLIST = 'Preencher o checklist da oferta.';
 const T_FICHA = 'Preencher a Ficha da oferta.';
@@ -1391,14 +1392,14 @@ const MIGRACOES = [
     modelos: m => {
       for (const k of ['e2_Modelagem', 'e2_Refinamento']) {
         const l = m[k]; if (!l || l.some(x => x.t === T_CHECKLIST || x.t === T_FICHA)) continue;
-        const i = l.findIndex(x => x.t === T_REGISTRAR || x.t === T_EXTRAIR);
+        const i = l.findIndex(x => [T_REGISTRAR, T_EXTRAIR_V1, T_EXTRAIR].includes(x.t));
         l.splice(i < 0 ? l.length : i + 1, 0, { t: T_CHECKLIST, ev: '', como: '' });
       }
     },
     oferta: o => {
       const ts = tarefasDe(o, 'e2');
       if (!ts.length || ts.some(t => t.t === T_CHECKLIST || t.t === T_FICHA)) return;
-      const i = ts.findIndex(t => t.t === T_REGISTRAR || t.t === T_EXTRAIR);
+      const i = ts.findIndex(t => [T_REGISTRAR, T_EXTRAIR_V1, T_EXTRAIR].includes(t.t));
       ts.splice(i < 0 ? ts.length : i + 1, 0, { id: 'chk', t: T_CHECKLIST, ev: '', como: '', feito: false, link: '', nota: '' });
       ts.forEach(({ id, ...v }, j) => { o.etapas.e2[id] = { ...v, ordem: j + 1 }; });
     } },
@@ -1421,11 +1422,19 @@ const MIGRACOES = [
     } },
   { id: 'extrator-youtube',
     modelos: m => {
-      for (const k of ['e2_Modelagem', 'e2_Refinamento']) for (const x of m[k] || []) if (x.t === T_REGISTRAR || x.t === T_EXTRAIR) { x.t = T_EXTRAIR; x.ferramenta = EXTRATOR; }
+      for (const k of ['e2_Modelagem', 'e2_Refinamento']) for (const x of m[k] || []) if ([T_REGISTRAR, T_EXTRAIR_V1, T_EXTRAIR].includes(x.t)) { x.t = T_EXTRAIR; x.ferramenta = EXTRATOR; }
     },
     oferta: o => {
       const e2 = (o.etapas || {}).e2; if (!e2) return;
-      for (const id in e2) if (e2[id].t === T_REGISTRAR || e2[id].t === T_EXTRAIR) { e2[id].t = T_EXTRAIR; e2[id].ferramenta = EXTRATOR; }
+      for (const id in e2) if ([T_REGISTRAR, T_EXTRAIR_V1, T_EXTRAIR].includes(e2[id].t)) { e2[id].t = T_EXTRAIR; e2[id].ferramenta = EXTRATOR; }
+    } },
+  { id: 'extrator-texto-v2',
+    modelos: m => {
+      for (const k of ['e2_Modelagem', 'e2_Refinamento']) for (const x of m[k] || []) if (x.t === T_EXTRAIR_V1) x.t = T_EXTRAIR;
+    },
+    oferta: o => {
+      const e2 = (o.etapas || {}).e2; if (!e2) return;
+      for (const id in e2) if (e2[id].t === T_EXTRAIR_V1) e2[id].t = T_EXTRAIR;
     } }
 ];
 function migrarTudo() {
