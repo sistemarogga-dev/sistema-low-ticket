@@ -484,6 +484,8 @@ function migrarOferta(o) {
 }
 const PLATAFORMAS = ['Cakto', 'Greenn', 'WiaPay', 'Kiwify', 'Hotmart', 'Outra'];
 const FICHA = [
+  { k: 'headline', t: 'Headline', ph: 'A frase principal da oferta, a primeira coisa que a pessoa lê.', area: true },
+  { k: 'subheadline', t: 'Subheadline', ph: 'Complementa a headline: para quem é, o que entrega e como.', area: true },
   { k: 'publico', t: 'Público-alvo', ph: 'Quem compra? Profissão, momento de vida, nível de conhecimento.' },
   { k: 'dor', t: 'Dor principal', ph: 'O problema urgente que o produto resolve.', area: true },
   { k: 'promessa', t: 'Promessa / transformação', ph: 'O resultado que a pessoa quer alcançar.', area: true },
@@ -660,6 +662,7 @@ function contexto(o) {
   return [
     `Produto: ${o.nome}`,
     L2('Formato do entregável', f.formato),
+    L2('Headline atual', f.headline), L2('Subheadline atual', f.subheadline),
     typeof o.ticket === 'number' ? `Preço (ticket): ${fmtValor(o.ticket)}` : '',
     L2('Público-alvo', f.publico), L2('Dor principal', f.dor), L2('Promessa / transformação', f.promessa), L2('Mecanismo único', f.mecanismo),
     LL('Vantagens da oferta', f.vantagens),
