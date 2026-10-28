@@ -1000,7 +1000,7 @@ function renderConversas(o, sufixo) {
 }
 function renderGerador(o) {
   const f = o.ficha || {};
-  return `<div class="card" style="padding:16px 20px"><p style="margin:0;color:var(--muted);font-size:14px">Cada botão monta um prompt com os dados da Ficha. Copie, cole no ChatGPT ou no Claude e guarde o resultado aqui embaixo para não perder.</p></div>` +
+  return `<div class="card" style="padding:16px 20px"><p style="margin:0;color:var(--muted);font-size:14px">Cada botão monta um prompt com os dados da Ficha. Copie e cole no ChatGPT ou no Claude, e guarde o link da conversa aqui embaixo para não perder.</p></div>` +
   renderConversas(o, 'g') +
   GERADORES.map(g => {
     const e = ETAPA_POR[g.etapa];
@@ -1015,8 +1015,6 @@ function renderGerador(o) {
         <a class="btn sm" href="https://claude.ai/new" target="_blank" rel="noopener">Abrir Claude ↗</a>
       </div>
       <details><summary>Ver prompt</summary><pre>${esc(prompt)}</pre></details>
-      <label class="field"><span class="label">Resultado salvo</span>
-        <textarea id="ge-${g.k}" data-path="gerados.${g.k}" rows="4" placeholder="Cole aqui a resposta da IA para guardar junto da oferta">${esc((o.gerados || {})[g.k])}</textarea></label>
     </div>`;
   }).join('');
 }
